@@ -91,7 +91,7 @@ export default class GameEngine {
 	onAnimate = (frame: number) => {
 		if (!this.spaceShip) return;
 		this.spaceShip.beforeAnimate(frame, this.keyState);
-		this.threeEngine.setCameraPosition(this.spaceShip._object3d.position.x, this.spaceShip._object3d.position.y);
+		console.log(this.threeEngine.camera.position.x === this.spaceShip._object3d.position.x);
 		// exhaust particles
 		if (this.keyState.ArrowUp && frame % 2 === 0) {
 			const randomRotationAngle = -this.spaceShip._object3d.rotation.z - Math.PI + Math.random() * 0.3 - 0.15;
@@ -126,19 +126,7 @@ export default class GameEngine {
 		this.particles.forEach((particle) => particle.beforeAnimate(frame));
 		this.sceneObjectArray.forEach((object) => object.animate(frame));
 
-		// calculate world position
-		let pos = new THREE.Vector3();
-		pos = pos.setFromMatrixPosition(this.spaceShip._object3d.matrixWorld);
-		pos.project(this.threeEngine.camera);
-
-		const widthHalf = this.threeEngine.getCanvasElement().width / 2;
-		const heightHalf = this.threeEngine.getCanvasElement().height / 2;
-
-		pos.x = pos.x * widthHalf + widthHalf;
-		pos.y = -(pos.y * heightHalf) + heightHalf;
-		pos.z = 0;
-
-		console.log(pos);
+		this.threeEngine.setCameraPosition(this.spaceShip._object3d.position.x, this.spaceShip._object3d.position.y);
 	};
 
 	fireBullet = () => {

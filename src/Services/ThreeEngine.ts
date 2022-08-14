@@ -81,5 +81,16 @@ export default class ThreeEngine {
 
 	setCameraPosition = (x: number, y: number) => {
 		this.camera.position.set(x, y, cameraZPosition);
+		// update
+		this.camera.updateProjectionMatrix();
+	};
+
+	calculateScreenCoordinates = (object: THREE.Object3D) => {
+		const vector = new THREE.Vector3();
+		vector.setFromMatrixPosition(object.matrixWorld);
+		vector.project(this.camera);
+		vector.x = ((vector.x + 1) * this.domElement.width) / 2;
+		vector.y = (-(vector.y - 1) * this.domElement.height) / 2;
+		return vector;
 	};
 }
