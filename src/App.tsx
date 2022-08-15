@@ -14,6 +14,7 @@ function App() {
 
 	const threeEngine = useMemo(() => {
 		const { width, height } = calculateCanvasSize();
+		console.log('create new three engine');
 		return new ThreeEngine(width, height);
 	}, []);
 

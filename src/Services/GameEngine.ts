@@ -1,4 +1,5 @@
 import Bullet from 'ObjectLibrary/Bullet';
+import CanvasObject from 'ObjectLibrary/CanvasObject';
 import GameObject from 'ObjectLibrary/GameObject';
 import Particle from 'ObjectLibrary/Particle';
 import Spaceship from 'ObjectLibrary/Spaceship';
@@ -14,8 +15,8 @@ export interface GameKeyState {
 }
 
 export default class GameEngine {
-	sceneObjectArray: GameObject[] = [];
-	spaceShip?: Spaceship;
+	sceneObjectArray: CanvasObject[] = [];
+	spaceship?: Spaceship;
 	particles: Particle[] = [];
 	bullets: Bullet[] = [];
 	bulletAvailable = true;
@@ -58,13 +59,9 @@ export default class GameEngine {
 
 		// create spaceship at 0,0
 		const spaceship = new Spaceship(spaceshipSize);
-		spaceship._object3d.position.x = 0;
-		spaceship._object3d.position.y = 0;
-		spaceship._object3d.position.z = 0;
-		spaceship.setAnimationSpeed(0.5);
 
 		this.addToScene(spaceship);
-		this.spaceShip = spaceship;
+		this.spaceship = spaceship;
 
 		this.threeEngine.setOnAnimate(this.onAnimate);
 	};
@@ -74,27 +71,44 @@ export default class GameEngine {
 		// clear objects from scene
 		this.sceneObjectArray.forEach((object) => this.threeEngine.removeFromScene(object._object3d));
 		this.sceneObjectArray = [];
+
+		this.particles = [];
+		this.bullets = [];
+
+		this.spaceship = undefined;
+		this.threeEngine.setOnAnimate(undefined);
 	};
 
 	createCube = (size: number) => {
 		const geometry = new THREE.BoxGeometry(size, size, size);
 		const material = new THREE.MeshBasicMaterial({ color: 0xeaeaea });
 		const object3d = new THREE.Mesh(geometry, material);
-		return new GameObject(object3d);
+		return new CanvasObject(object3d);
 	};
 
-	addToScene = (object: GameObject) => {
+	addToScene = (object: CanvasObject) => {
 		this.sceneObjectArray.push(object);
 		this.threeEngine.addToScene(object._object3d);
 	};
 
+	removeFromScene = (object: CanvasObject) => {
+		this.sceneObjectArray = this.sceneObjectArray.filter((sceneObject) => sceneObject !== object);
+		this.threeEngine.removeFromScene(object._object3d);
+	};
+
+	getSpaceship = () => {
+		if (this.spaceship) {
+			return this.spaceship;
+		}
+		throw new Error('Spaceship not found');
+	};
+
 	onAnimate = (frame: number) => {
-		if (!this.spaceShip) return;
-		this.spaceShip.beforeAnimate(frame, this.keyState);
-		console.log(this.threeEngine.camera.position.x === this.spaceShip._object3d.position.x);
+		const spaceship = this.getSpaceship();
+		spaceship.beforeAnimate(frame, this.keyState);
 		// exhaust particles
 		if (this.keyState.ArrowUp && frame % 2 === 0) {
-			const randomRotationAngle = -this.spaceShip._object3d.rotation.z - Math.PI + Math.random() * 0.3 - 0.15;
+			const randomRotationAngle = -spaceship._object3d.rotation.z - Math.PI + Math.random() * 0.3 - 0.15;
 			const particle = new Particle(
 				0.03,
 				{
@@ -103,36 +117,59 @@ export default class GameEngine {
 				},
 				{
 					x:
-						this.spaceShip._object3d.position.x +
+						spaceship._object3d.position.x +
 						(Math.random() * 0.08 - 0.04) +
 						Math.sin(randomRotationAngle) / 8,
 					y:
-						this.spaceShip._object3d.position.y +
+						spaceship._object3d.position.y +
 						(Math.random() * 0.08 - 0.04) +
 						Math.cos(randomRotationAngle) / 8,
-				},
-				() => {
-					this.threeEngine.removeFromScene(particle._object3d);
-					this.particles.splice(this.particles.indexOf(particle), 1);
 				},
 			);
 			this.addToScene(particle);
 			this.particles.push(particle);
 		}
 		this.bullets.forEach((bullet) => {
-			if (!this.spaceShip) return;
-			bullet.beforeAnimate(frame, this.spaceShip._object3d.position);
+			this.calculateSpaceshipProximity(bullet);
+			this.removeCanvasObjectIfRequired(bullet, this.bullets);
+			bullet.beforeAnimate(frame);
 		});
-		this.particles.forEach((particle) => particle.beforeAnimate(frame));
-		this.sceneObjectArray.forEach((object) => object.animate(frame));
+		this.particles.forEach((particle) => {
+			this.removeCanvasObjectIfRequired(particle, this.particles);
+			particle.beforeAnimate(frame);
+		});
 
-		this.threeEngine.setCameraPosition(this.spaceShip._object3d.position.x, this.spaceShip._object3d.position.y);
+		// run animation function on all objects
+		this.sceneObjectArray.forEach((object) => object.animate());
+
+		// align camera with spaceship
+		this.threeEngine.setCameraPosition(spaceship._object3d.position.x, spaceship._object3d.position.y);
+	};
+
+	removeCanvasObjectIfRequired = (object: CanvasObject, specificArray: CanvasObject[]) => {
+		if (object.getShouldRemove()) {
+			this.removeFromScene(object);
+			specificArray.splice(specificArray.indexOf(object), 1);
+		}
+	};
+
+	calculateSpaceshipProximity = (object: GameObject) => {
+		const spaceship = this.getSpaceship();
+		console.log('---');
+		console.log('spaceshipY', spaceship._object3d.position.y);
+		console.log('objectY', object._object3d.position.y);
+		const distance = this.threeEngine.calculateDistanceBetweenObjects(object._object3d, spaceship._object3d);
+		console.log('distance', distance);
+		const angle = this.threeEngine.calculateAngleBetweenObjects(object._object3d, spaceship._object3d);
+		object.setAngleToSpaceship(angle);
+		object.setDistanceToSpaceship(distance);
 	};
 
 	fireBullet = () => {
-		if (!this.bulletAvailable || !this.spaceShip) return;
+		if (!this.bulletAvailable) return;
+		const spaceship = this.getSpaceship();
 		this.bulletAvailable = false;
-		const rotationAngle = -this.spaceShip._object3d.rotation.z;
+		const rotationAngle = -spaceship._object3d.rotation.z;
 		const bullet = new Bullet(
 			0.03,
 			{
@@ -140,20 +177,10 @@ export default class GameEngine {
 				y: Math.cos(rotationAngle) / 6,
 			},
 			{
-				x: this.spaceShip._object3d.position.x + Math.sin(rotationAngle) / 10,
-				y: this.spaceShip._object3d.position.y + Math.cos(rotationAngle) / 10,
-			},
-			() => {
-				this.threeEngine.removeFromScene(bullet._object3d);
-				this.bullets.splice(this.bullets.indexOf(bullet), 1);
+				x: spaceship._object3d.position.x + Math.sin(rotationAngle) / 10,
+				y: spaceship._object3d.position.y + Math.cos(rotationAngle) / 10,
 			},
 		);
-		bullet.setAnimationSpeeds({
-			rotation: {
-				x: 0.01,
-				y: 0.01,
-			},
-		});
 		this.addToScene(bullet);
 		this.bullets.push(bullet);
 	};

@@ -1,14 +1,15 @@
 import * as THREE from 'three';
-import GameObject from './GameObject';
+import CanvasObject from './CanvasObject';
 import GeometryHelper from 'Helpers/GeometryHelper';
 import { GameKeyState } from 'Services/GameEngine';
 
-const maxAcceleration = 0.015;
-const dragFactor = 0.997;
+const maxAcceleration = 0.001;
+const dragFactor = 0.99;
 const rotationalDragFactor = 0.95;
-const maxRotationSpeed = 0.08;
+const maxRotationSpeed = 0.04;
+const rotationalAcceleration = 0.004;
 
-export default class Spaceship extends GameObject {
+export default class Spaceship extends CanvasObject {
 	acceleration = 0;
 	speed = {
 		x: 0,
@@ -47,8 +48,8 @@ export default class Spaceship extends GameObject {
 	}
 
 	modifySpeed = () => {
-		this.speed.x += (maxAcceleration * Math.cos(this._object3d.rotation.z + Math.PI / 2)) / 20;
-		this.speed.y += (maxAcceleration * Math.sin(this._object3d.rotation.z + Math.PI / 2)) / 20;
+		this.speed.x += maxAcceleration * Math.cos(this._object3d.rotation.z + Math.PI / 2);
+		this.speed.y += maxAcceleration * Math.sin(this._object3d.rotation.z + Math.PI / 2);
 	};
 
 	applyDrag = (modifier: number) => {
@@ -66,10 +67,10 @@ export default class Spaceship extends GameObject {
 			this.applyDrag(1);
 		}
 		if (keyState.ArrowLeft) {
-			this.speed.rotation += 0.008;
+			this.speed.rotation += rotationalAcceleration;
 		}
 		if (keyState.ArrowRight) {
-			this.speed.rotation -= 0.008;
+			this.speed.rotation -= rotationalAcceleration;
 		}
 		if (!keyState.ArrowRight && !keyState.ArrowLeft) {
 			this.applyRotationalDrag(1);

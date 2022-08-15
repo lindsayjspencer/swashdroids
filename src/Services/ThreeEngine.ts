@@ -11,7 +11,7 @@ export default class ThreeEngine {
 	isInitialised = false;
 	requestAnimationFrameId?: number;
 
-	setOnAnimate = (onAnimate: (frame: number) => void) => {
+	setOnAnimate = (onAnimate: ((frame: number) => void) | undefined) => {
 		this.onAnimate = onAnimate;
 	};
 
@@ -40,17 +40,19 @@ export default class ThreeEngine {
 		this.renderer.setSize(width, height);
 	}
 
+	frame = 0;
+
+	animate = () => {
+		this.frame++;
+		this.requestAnimationFrameId = requestAnimationFrame(this.animate);
+		this.onAnimate?.(this.frame);
+		this.renderer.render(this.scene, this.camera);
+	};
+
 	initialise = () => {
 		this.isInitialised = true;
 		this.camera.position.z = cameraZPosition;
-		let frame = 0;
-		const animate = () => {
-			frame++;
-			this.requestAnimationFrameId = requestAnimationFrame(animate);
-			this.onAnimate?.(frame);
-			this.renderer.render(this.scene, this.camera);
-		};
-		animate();
+		this.animate();
 		console.log('ThreeEngine initialised');
 	};
 
@@ -58,7 +60,9 @@ export default class ThreeEngine {
 		this.renderer.dispose();
 		console.log('ThreeEngine disposed');
 		this.isInitialised = false;
-		this.requestAnimationFrameId && window.cancelAnimationFrame(this.requestAnimationFrameId);
+		if (this.requestAnimationFrameId !== undefined) {
+			cancelAnimationFrame(this.requestAnimationFrameId);
+		}
 	};
 
 	setCameraAspectRation = (width: number, height: number) => {
@@ -92,5 +96,26 @@ export default class ThreeEngine {
 		vector.x = ((vector.x + 1) * this.domElement.width) / 2;
 		vector.y = (-(vector.y - 1) * this.domElement.height) / 2;
 		return vector;
+	};
+
+	calculateAngleBetweenObjects = (object1: THREE.Object3D, object2: THREE.Object3D) => {
+		const vector1 = new THREE.Vector3();
+		object1.updateMatrixWorld();
+		vector1.setFromMatrixPosition(object1.matrixWorld);
+		const vector2 = new THREE.Vector3();
+		object2.updateMatrixWorld();
+		vector2.setFromMatrixPosition(object2.matrixWorld);
+		return vector1.angleTo(vector2);
+	};
+
+	calculateDistanceBetweenObjects = (object1: THREE.Object3D, object2: THREE.Object3D) => {
+		const vector1 = new THREE.Vector3();
+		object1.updateMatrixWorld();
+		vector1.setFromMatrixPosition(object1.matrixWorld);
+		const vector2 = new THREE.Vector3();
+		object2.updateMatrixWorld();
+		vector2.setFromMatrixPosition(object2.matrixWorld);
+		const distance = vector1.distanceTo(vector2);
+		return distance;
 	};
 }

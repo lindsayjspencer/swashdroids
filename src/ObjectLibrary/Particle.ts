@@ -1,14 +1,8 @@
 import * as THREE from 'three';
-import GameObject from './GameObject';
+import CanvasObject from './CanvasObject';
 
-export default class Particle extends GameObject {
-	removeFromScene: () => void;
-	constructor(
-		size: number,
-		speed: { x: number; y: number },
-		startingPosition: { x: number; y: number },
-		removeFromScene: () => void,
-	) {
+export default class Particle extends CanvasObject {
+	constructor(size: number, speed: { x: number; y: number }, startingPosition: { x: number; y: number }) {
 		const material = new THREE.MeshLambertMaterial({
 			side: THREE.DoubleSide,
 			color: 0x71bd31,
@@ -24,7 +18,6 @@ export default class Particle extends GameObject {
 
 		super(particle);
 
-		this.removeFromScene = removeFromScene;
 		this.setAnimationSpeeds({
 			position: speed,
 		});
@@ -36,7 +29,7 @@ export default class Particle extends GameObject {
 		const material = Array.isArray(materialProperty) ? materialProperty[0] : materialProperty;
 		material.opacity = Math.max(0, material.opacity - 0.005);
 		if (material.opacity === 0) {
-			this.removeFromScene();
+			this.setShouldRemove(true);
 		}
 	};
 }

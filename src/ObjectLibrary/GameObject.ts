@@ -1,90 +1,36 @@
 import * as THREE from 'three';
+import CanvasObject from './CanvasObject';
 
-interface AnimationSpeeds {
-	position: AnimationSpeedSet;
-	rotation: AnimationSpeedSet;
-}
-
-interface AnimationSpeedSet {
-	x: number;
-	y: number;
-	z: number;
-}
-
-interface PartialAnimationSpeedSet {
-	x?: number;
-	y?: number;
-	z?: number;
-}
-
-interface PartialAnimationSpeeds {
-	position?: PartialAnimationSpeedSet;
-	rotation?: PartialAnimationSpeedSet;
-}
-
-export default class GameObject {
-	animationSpeed = 1;
-
-	_animationSpeeds: AnimationSpeeds = {
-		position: {
-			x: 0,
-			y: 0,
-			z: 0,
-		},
-		rotation: {
-			x: 0,
-			y: 0,
-			z: 0,
-		},
-	};
-
-	_object3d: THREE.Object3D;
+export default class GameObject extends CanvasObject {
+	_angleToSpaceship?: number;
+	_distanceToSpaceship?: number;
+	_isOffscreen = false;
 
 	constructor(object: THREE.Object3D) {
-		this._object3d = object;
+		super(object);
 	}
 
-	setAnimationSpeeds = (speeds: PartialAnimationSpeeds) => {
-		this._animationSpeeds = {
-			position: {
-				x: speeds.position?.x ?? this._animationSpeeds.position.x,
-				y: speeds.position?.y ?? this._animationSpeeds.position.y,
-				z: speeds.position?.z ?? this._animationSpeeds.position.z,
-			},
-			rotation: {
-				x: speeds.rotation?.x ?? this._animationSpeeds.rotation.x,
-				y: speeds.rotation?.y ?? this._animationSpeeds.rotation.y,
-				z: speeds.rotation?.z ?? this._animationSpeeds.rotation.z,
-			},
-		};
+	setAngleToSpaceship = (angle: number) => {
+		this._angleToSpaceship = angle;
 	};
 
-	setAnimationSpeed = (speed: number) => {
-		this.animationSpeed = speed;
+	getAngleToSpaceship = () => {
+		return this._angleToSpaceship;
 	};
 
-	getCalculatedAnimationSpeed = (): AnimationSpeeds => {
-		return {
-			position: {
-				x: this._animationSpeeds.position.x * this.animationSpeed,
-				y: this._animationSpeeds.position.y * this.animationSpeed,
-				z: this._animationSpeeds.position.z * this.animationSpeed,
-			},
-			rotation: {
-				x: this._animationSpeeds.rotation.x * this.animationSpeed,
-				y: this._animationSpeeds.rotation.y * this.animationSpeed,
-				z: this._animationSpeeds.rotation.z * this.animationSpeed,
-			},
-		};
+	setDistanceToSpaceship = (distance: number) => {
+		this._distanceToSpaceship = distance;
 	};
 
-	animate = (frame: number) => {
-		const speeds = this.getCalculatedAnimationSpeed();
-		this._object3d.position.x += speeds.position.x;
-		this._object3d.position.y += speeds.position.y;
-		this._object3d.position.z += speeds.position.z;
-		this._object3d.rotation.x += speeds.rotation.x;
-		this._object3d.rotation.y += speeds.rotation.y;
-		this._object3d.rotation.z += speeds.rotation.z;
+	getDistanceToSpaceship = () => {
+		return this._distanceToSpaceship;
+	};
+
+	setIsOffscreen = (isOffscreen: boolean) => {
+		this._isOffscreen = isOffscreen;
+	};
+
+	getIsOffscreen = () => {
+		return this._isOffscreen;
 	};
 }
