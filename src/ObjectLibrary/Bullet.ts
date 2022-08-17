@@ -1,20 +1,29 @@
 import * as THREE from 'three';
 import GameObject from './GameObject';
 
+const material = new THREE.MeshLambertMaterial({
+	side: THREE.DoubleSide,
+	color: 0x000000,
+});
 export default class Bullet extends GameObject {
-	constructor(size: number, speed: { x: number; y: number }, startingPosition: { x: number; y: number }) {
-		const material = new THREE.MeshLambertMaterial({
-			side: THREE.DoubleSide,
-			color: 0x000000,
-		});
-
+	constructor(
+		size: number,
+		speed: { x: number; y: number },
+		startingPosition: { x: number; y: number },
+		maxVisibleDistance: number,
+	) {
 		const geometry = new THREE.CircleGeometry(size, 12);
-		const particle = new THREE.Mesh(geometry, material);
+		const bullet = new THREE.Mesh(geometry, material);
 
-		particle.position.x = startingPosition.x;
-		particle.position.y = startingPosition.y;
+		bullet.position.x = startingPosition.x;
+		bullet.position.y = startingPosition.y;
 
-		super(particle);
+		super(bullet);
+
+		this.setMaxVisibleDistance(maxVisibleDistance);
+
+		this._disposableGeometries.push(geometry);
+		this._meshes.push(bullet);
 
 		this.setAnimationSpeeds({
 			position: speed,
@@ -23,8 +32,9 @@ export default class Bullet extends GameObject {
 
 	beforeAnimate = (frame: number) => {
 		const distanceToSpacehip = this.getDistanceToSpaceship();
-		if (!distanceToSpacehip) return;
-		if (distanceToSpacehip > 6) {
+		const maxVisibleDistance = this.getMaxVisibleDistance();
+		if (distanceToSpacehip === undefined || maxVisibleDistance === undefined) return;
+		if (distanceToSpacehip > maxVisibleDistance) {
 			this.setShouldRemove(true);
 		}
 	};

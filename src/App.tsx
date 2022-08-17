@@ -39,12 +39,13 @@ function App() {
 			const canvas = threeEngine.getCanvasElement();
 			canvas.style.width = `${width}px`;
 			canvas.style.height = `${height}px`;
+			gameEngine.recalculateVisibleDistance();
 		};
 		window.addEventListener('resize', resize);
 		return () => {
 			window.removeEventListener('resize', resize);
 		};
-	}, [threeEngine]);
+	}, [threeEngine, gameEngine]);
 
 	// key listeners
 	useEffect(() => {

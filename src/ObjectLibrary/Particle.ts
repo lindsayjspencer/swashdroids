@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import CanvasObject from './CanvasObject';
+import SceneObject from './SceneObject';
 
-export default class Particle extends CanvasObject {
+export default class Particle extends SceneObject {
 	constructor(size: number, speed: { x: number; y: number }, startingPosition: { x: number; y: number }) {
 		const material = new THREE.MeshLambertMaterial({
 			side: THREE.DoubleSide,
@@ -17,6 +17,10 @@ export default class Particle extends CanvasObject {
 		particle.position.y = startingPosition.y;
 
 		super(particle);
+
+		this._disposableGeometries.push(geometry);
+		this._disposableMaterials.push(material);
+		this._meshes.push(particle);
 
 		this.setAnimationSpeeds({
 			position: speed,

@@ -22,8 +22,11 @@ interface PartialAnimationSpeeds {
 	rotation?: PartialAnimationSpeedSet;
 }
 
-export default class CanvasObject {
+export default abstract class SceneObject {
 	animationSpeed = 1;
+	_disposableGeometries: THREE.BufferGeometry[] = [];
+	_disposableMaterials: THREE.Material[] = [];
+	_meshes: THREE.Mesh[] = [];
 
 	_animationSpeeds: AnimationSpeeds = {
 		position: {
@@ -96,5 +99,10 @@ export default class CanvasObject {
 
 	setShouldRemove = (shouldRemove: boolean) => {
 		this._shouldRemove = shouldRemove;
+	};
+
+	dispose = () => {
+		this._disposableGeometries.forEach((geometry) => geometry.dispose());
+		this._disposableMaterials.forEach((material) => material.dispose());
 	};
 }

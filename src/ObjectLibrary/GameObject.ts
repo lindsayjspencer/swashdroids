@@ -1,9 +1,10 @@
 import * as THREE from 'three';
-import CanvasObject from './CanvasObject';
+import SceneObject from './SceneObject';
 
-export default class GameObject extends CanvasObject {
+export default class GameObject extends SceneObject {
 	_angleToSpaceship?: number;
 	_distanceToSpaceship?: number;
+	_maxVisibleDistance?: number;
 	_isOffscreen = false;
 
 	constructor(object: THREE.Object3D) {
@@ -24,6 +25,14 @@ export default class GameObject extends CanvasObject {
 
 	getDistanceToSpaceship = () => {
 		return this._distanceToSpaceship;
+	};
+
+	setMaxVisibleDistance = (distance: number) => {
+		this._maxVisibleDistance = distance;
+	};
+
+	getMaxVisibleDistance = () => {
+		return this._maxVisibleDistance;
 	};
 
 	setIsOffscreen = (isOffscreen: boolean) => {

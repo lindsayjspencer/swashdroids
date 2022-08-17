@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import CanvasObject from './CanvasObject';
-import GeometryHelper from 'Helpers/GeometryHelper';
+import SceneObject from './SceneObject';
 import { GameKeyState } from 'Services/GameEngine';
 
 const maxAcceleration = 0.001;
@@ -9,7 +8,7 @@ const rotationalDragFactor = 0.95;
 const maxRotationSpeed = 0.04;
 const rotationalAcceleration = 0.004;
 
-export default class Spaceship extends CanvasObject {
+export default class Spaceship extends SceneObject {
 	acceleration = 0;
 	speed = {
 		x: 0,
@@ -18,33 +17,45 @@ export default class Spaceship extends CanvasObject {
 	};
 
 	constructor(size: number) {
-		const group = new THREE.Group();
 		const material = new THREE.MeshPhongMaterial({ side: THREE.DoubleSide, color: 0x71bd31 });
-		const leftSide = GeometryHelper.createCustomGeometryFromPoints(
-			[
-				new THREE.Vector3(0, 0.5 * size, 0),
-				new THREE.Vector3(0.35 * size, -0.5 * size, 0),
-				new THREE.Vector3(0, -0.25 * size, 0),
-			],
-			material,
-		);
 
-		const rightSide = GeometryHelper.createCustomGeometryFromPoints(
-			[
-				new THREE.Vector3(0, 0.5 * size, 0),
-				new THREE.Vector3(-0.35 * size, -0.5 * size, 0),
-				new THREE.Vector3(0, -0.25 * size, 0),
-			],
-			material,
-		);
+		const shipShape = new THREE.Shape();
+		shipShape.moveTo(0, 0.5 * size);
+		shipShape.lineTo(0.35 * size, -0.5 * size);
+		shipShape.lineTo(0, -0.25 * size);
+		shipShape.lineTo(-0.35 * size, -0.5 * size);
+		shipShape.lineTo(0, 0.5 * size);
 
-		group.add(rightSide, leftSide);
+		const shipGeometry = new THREE.ShapeGeometry(shipShape);
+		const ship = new THREE.Mesh(shipGeometry, material);
 
-		group.position.x = 0;
-		group.position.y = 0;
-		group.position.z = 0;
+		// outline
+		const outline = new THREE.EdgesGeometry(shipGeometry);
+		// thick lines
+		const outlineMaterial = new THREE.LineBasicMaterial({ color: 0xa6dc79 });
+		const outlineMesh = new THREE.LineSegments(outline, outlineMaterial);
 
-		super(group);
+		ship.add(outlineMesh);
+
+		const circleMaterial = new THREE.MeshBasicMaterial({ color: 0xeaeaea });
+
+		// add circle around ship
+		const circle = new THREE.CircleGeometry(6, 32);
+		const circleMesh = new THREE.Mesh(circle, circleMaterial);
+
+		circleMesh.position.z = -0.1;
+
+		ship.add(circleMesh);
+
+		ship.position.x = 0;
+		ship.position.y = 0;
+		ship.position.z = 0;
+
+		super(ship);
+
+		this._disposableGeometries.push(shipGeometry, outline);
+		this._disposableMaterials.push(material, outlineMaterial);
+		this._meshes.push(ship);
 	}
 
 	modifySpeed = () => {

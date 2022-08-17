@@ -1,9 +1,9 @@
+import Asteroid from 'ObjectLibrary/Asteroid';
 import Bullet from 'ObjectLibrary/Bullet';
-import CanvasObject from 'ObjectLibrary/CanvasObject';
+import SceneObject from 'ObjectLibrary/SceneObject';
 import GameObject from 'ObjectLibrary/GameObject';
 import Particle from 'ObjectLibrary/Particle';
 import Spaceship from 'ObjectLibrary/Spaceship';
-import * as THREE from 'three';
 import ThreeEngine from './ThreeEngine';
 
 export interface GameKeyState {
@@ -15,8 +15,9 @@ export interface GameKeyState {
 }
 
 export default class GameEngine {
-	sceneObjectArray: CanvasObject[] = [];
+	sceneObjectArray: SceneObject[] = [];
 	spaceship?: Spaceship;
+	asteroids: Asteroid[] = [];
 	particles: Particle[] = [];
 	bullets: Bullet[] = [];
 	bulletAvailable = true;
@@ -28,34 +29,31 @@ export default class GameEngine {
 		ArrowRight: false,
 		Space: false,
 	};
+	totalAsteroidsTarget = 40;
+	maxVisibleDistance: number;
 
 	constructor(threeEngine: ThreeEngine) {
 		this.threeEngine = threeEngine;
+		const { height, width } = this.threeEngine.getVisibleHeightAndWidth();
+		this.maxVisibleDistance = Math.sqrt(Math.pow(height, 2) + Math.pow(width, 2)) / 2;
 	}
+
+	recalculateVisibleDistance = () => {
+		const { height, width } = this.threeEngine.getVisibleHeightAndWidth();
+		this.maxVisibleDistance = Math.sqrt(Math.pow(height, 2) + Math.pow(width, 2)) / 2;
+		console.log('maxVisibleDistnace', this.maxVisibleDistance);
+		this.bullets.forEach((bullet) => {
+			bullet.setMaxVisibleDistance(this.maxVisibleDistance);
+		});
+		this.asteroids.forEach((asteroid) => {
+			asteroid.setMaxVisibleDistance(this.maxVisibleDistance);
+		});
+	};
 
 	initialise = () => {
 		console.log('GameEngine initialised');
 
-		const cubeSize = 0.3;
 		const spaceshipSize = 0.5;
-
-		const randomMapSize = 25;
-
-		// create 15 randomly positioned cubes within a 100 x 100 xy grid
-		for (let i = 0; i < 150; i++) {
-			const cube = this.createCube(cubeSize);
-			cube._object3d.position.x = Math.random() * randomMapSize - randomMapSize / 2;
-			cube._object3d.position.y = Math.random() * randomMapSize - randomMapSize / 2;
-			cube._object3d.position.z = 0;
-			cube.setAnimationSpeed(Math.random() * 0.5 + 0.5);
-			cube.setAnimationSpeeds({
-				rotation: {
-					x: 0.01,
-					y: 0.01,
-				},
-			});
-			this.addToScene(cube);
-		}
 
 		// create spaceship at 0,0
 		const spaceship = new Spaceship(spaceshipSize);
@@ -64,6 +62,8 @@ export default class GameEngine {
 		this.spaceship = spaceship;
 
 		this.threeEngine.setOnAnimate(this.onAnimate);
+
+		this.addAsteroids(this.totalAsteroidsTarget, 4, this.maxVisibleDistance + 5);
 	};
 
 	dispose = () => {
@@ -79,19 +79,12 @@ export default class GameEngine {
 		this.threeEngine.setOnAnimate(undefined);
 	};
 
-	createCube = (size: number) => {
-		const geometry = new THREE.BoxGeometry(size, size, size);
-		const material = new THREE.MeshBasicMaterial({ color: 0xeaeaea });
-		const object3d = new THREE.Mesh(geometry, material);
-		return new CanvasObject(object3d);
-	};
-
-	addToScene = (object: CanvasObject) => {
+	addToScene = (object: SceneObject) => {
 		this.sceneObjectArray.push(object);
 		this.threeEngine.addToScene(object._object3d);
 	};
 
-	removeFromScene = (object: CanvasObject) => {
+	removeFromScene = (object: SceneObject) => {
 		this.sceneObjectArray = this.sceneObjectArray.filter((sceneObject) => sceneObject !== object);
 		this.threeEngine.removeFromScene(object._object3d);
 	};
@@ -131,13 +124,29 @@ export default class GameEngine {
 		}
 		this.bullets.forEach((bullet) => {
 			this.calculateSpaceshipProximity(bullet);
-			this.removeCanvasObjectIfRequired(bullet, this.bullets);
-			bullet.beforeAnimate(frame);
+			if (!this.removeSceneObjectIfRequired(bullet, this.bullets)) {
+				bullet.beforeAnimate(frame);
+			}
 		});
 		this.particles.forEach((particle) => {
-			this.removeCanvasObjectIfRequired(particle, this.particles);
-			particle.beforeAnimate(frame);
+			if (!this.removeSceneObjectIfRequired(particle, this.particles)) {
+				particle.beforeAnimate(frame);
+			}
 		});
+		this.asteroids.forEach((asteroid) => {
+			this.calculateSpaceshipProximity(asteroid);
+			if (!this.removeSceneObjectIfRequired(asteroid, this.asteroids)) {
+				asteroid.beforeAnimate(frame);
+			}
+		});
+
+		if (this.totalAsteroidsTarget > this.asteroids.length) {
+			this.addAsteroids(
+				this.totalAsteroidsTarget - this.asteroids.length,
+				this.maxVisibleDistance + 6,
+				this.maxVisibleDistance + 3,
+			);
+		}
 
 		// run animation function on all objects
 		this.sceneObjectArray.forEach((object) => object.animate());
@@ -146,20 +155,43 @@ export default class GameEngine {
 		this.threeEngine.setCameraPosition(spaceship._object3d.position.x, spaceship._object3d.position.y);
 	};
 
-	removeCanvasObjectIfRequired = (object: CanvasObject, specificArray: CanvasObject[]) => {
+	addAsteroids = (amount: number, minDistance: number, maxDistance: number) => {
+		const spaceship = this.getSpaceship();
+
+		for (let i = 0; i < amount; i++) {
+			const randomAngle = Math.random() * Math.PI * 2;
+			const randomDistance = Math.random() * (maxDistance - minDistance) + minDistance;
+			const asteroid = new Asteroid(
+				1,
+				8,
+				{
+					x: Math.random() * 0.01 - 0.005,
+					y: Math.random() * 0.01 - 0.005,
+				},
+				{
+					x: spaceship._object3d.position.x + Math.sin(randomAngle) * randomDistance,
+					y: spaceship._object3d.position.y + Math.cos(randomAngle) * randomDistance,
+				},
+				this.maxVisibleDistance,
+			);
+			this.addToScene(asteroid);
+			this.asteroids.push(asteroid);
+		}
+	};
+
+	removeSceneObjectIfRequired = (object: SceneObject, specificArray: SceneObject[]) => {
 		if (object.getShouldRemove()) {
 			this.removeFromScene(object);
 			specificArray.splice(specificArray.indexOf(object), 1);
+			object.dispose();
+			return true;
 		}
+		return false;
 	};
 
 	calculateSpaceshipProximity = (object: GameObject) => {
 		const spaceship = this.getSpaceship();
-		console.log('---');
-		console.log('spaceshipY', spaceship._object3d.position.y);
-		console.log('objectY', object._object3d.position.y);
 		const distance = this.threeEngine.calculateDistanceBetweenObjects(object._object3d, spaceship._object3d);
-		console.log('distance', distance);
 		const angle = this.threeEngine.calculateAngleBetweenObjects(object._object3d, spaceship._object3d);
 		object.setAngleToSpaceship(angle);
 		object.setDistanceToSpaceship(distance);
@@ -180,6 +212,7 @@ export default class GameEngine {
 				x: spaceship._object3d.position.x + Math.sin(rotationAngle) / 10,
 				y: spaceship._object3d.position.y + Math.cos(rotationAngle) / 10,
 			},
+			this.maxVisibleDistance,
 		);
 		this.addToScene(bullet);
 		this.bullets.push(bullet);

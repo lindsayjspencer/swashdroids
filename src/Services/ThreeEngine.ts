@@ -118,4 +118,29 @@ export default class ThreeEngine {
 		const distance = vector1.distanceTo(vector2);
 		return distance;
 	};
+
+	visibleHeightAtZDepth = (depth: number, camera: THREE.PerspectiveCamera) => {
+		// compensate for cameras not positioned at z=0
+		const cameraOffset = camera.position.z;
+		if (depth < cameraOffset) depth -= cameraOffset;
+		else depth += cameraOffset;
+
+		// vertical fov in radians
+		const vFOV = (camera.fov * Math.PI) / 180;
+
+		// Math.abs to ensure the result is always positive
+		return 2 * Math.tan(vFOV / 2) * Math.abs(depth);
+	};
+
+	visibleWidthAtZDepth = (depth: number, camera: THREE.PerspectiveCamera) => {
+		const height = this.visibleHeightAtZDepth(depth, camera);
+		return height * camera.aspect;
+	};
+
+	getVisibleHeightAndWidth = () => {
+		return {
+			height: this.visibleHeightAtZDepth(cameraZPosition, this.camera),
+			width: this.visibleWidthAtZDepth(cameraZPosition, this.camera),
+		};
+	};
 }
