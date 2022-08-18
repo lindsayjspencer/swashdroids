@@ -67,4 +67,8 @@ export default class Asteroid extends GameObject {
 			this.setShouldRemove(true);
 		}
 	};
+
+	checkCollisionWith = (arg: GameObject) => {
+		//
+	};
 }

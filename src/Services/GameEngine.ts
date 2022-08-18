@@ -130,6 +130,9 @@ export default class GameEngine {
 			this.particles.push(particle);
 		}
 		this.bullets.forEach((bullet) => {
+			this.asteroids.forEach((asteroid) => {
+				asteroid.checkCollisionWith(bullet);
+			});
 			this.calculateSpaceshipProximity(bullet);
 			if (!this.removeSceneObjectIfRequired(bullet, this.bullets)) {
 				bullet.beforeAnimate(frame);
