@@ -39,10 +39,8 @@ export default class GameEngine {
 	}
 
 	setMaxVisibleDistance = (distance: number) => {
-		console.log('distance', distance);
 		this.maxVisibleDistance = distance;
 		this.totalAsteroidsTarget = Math.floor(this.asteroidDenity * distance);
-		console.log('asteroid target', this.totalAsteroidsTarget);
 		this.bullets.forEach((bullet) => {
 			bullet.setMaxVisibleDistance(distance);
 		});
@@ -165,30 +163,33 @@ export default class GameEngine {
 		this.threeEngine.setCameraPosition(spaceship._object3d.position.x, spaceship._object3d.position.y);
 	};
 
+	addAsteroid = (asteroid: Asteroid) => {
+		this.asteroids.push(asteroid);
+		this.addToScene(asteroid);
+	};
+
 	addAsteroids = (amount: number, minDistance: number, maxDistance: number) => {
 		const spaceship = this.getSpaceship();
 
 		for (let i = 0; i < amount; i++) {
 			const randomAngle = Math.random() * Math.PI * 2;
 			const randomDistance = Math.random() * (maxDistance - minDistance) + minDistance;
-			const asteroid = new Asteroid(
-				1,
-				8,
-				{
-					x: Math.random() * 0.01 - 0.005,
-					y: Math.random() * 0.01 - 0.005,
-				},
-				{
-					x: spaceship._object3d.position.x + Math.sin(randomAngle) * randomDistance,
-					y: spaceship._object3d.position.y + Math.cos(randomAngle) * randomDistance,
-				},
-				this.maxVisibleDistance,
+			this.addAsteroid(
+				new Asteroid(
+					1,
+					8,
+					{
+						x: Math.random() * 0.01 - 0.005,
+						y: Math.random() * 0.01 - 0.005,
+					},
+					{
+						x: spaceship._object3d.position.x + Math.sin(randomAngle) * randomDistance,
+						y: spaceship._object3d.position.y + Math.cos(randomAngle) * randomDistance,
+					},
+					this.maxVisibleDistance,
+				),
 			);
-			this.addToScene(asteroid);
-			this.asteroids.push(asteroid);
 		}
-
-		console.log(`Total asteroids ${this.asteroids.length}`);
 	};
 
 	removeSceneObjectIfRequired = (object: SceneObject, specificArray: SceneObject[]) => {
