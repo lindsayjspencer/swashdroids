@@ -10,6 +10,7 @@ const material = new THREE.MeshLambertMaterial({
 const outlineMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
 
 export default class Asteroid extends GameObject {
+	size: number;
 	constructor(
 		size: number,
 		sides: number,
@@ -18,7 +19,6 @@ export default class Asteroid extends GameObject {
 		maxVisibleDistance: number,
 	) {
 		const calculatedSize = baseSize * size;
-
 		// create ateroid shape
 		const asteroidShape = new THREE.Shape();
 		asteroidShape.moveTo(calculatedSize, 0);
@@ -44,6 +44,7 @@ export default class Asteroid extends GameObject {
 		asteroid.position.y = startingPosition.y;
 
 		super(asteroid);
+		this.size = calculatedSize;
 
 		this._disposableGeometries.push(geometry, outline);
 		this._meshes.push(asteroid);
@@ -60,6 +61,9 @@ export default class Asteroid extends GameObject {
 		const maxVisibleDistance = this.getMaxVisibleDistance();
 		if (distanceToSpacehip === undefined || maxVisibleDistance === undefined) return;
 		if (distanceToSpacehip > maxVisibleDistance + 5) {
+			this.setShouldRemove(true);
+		}
+		if (distanceToSpacehip <= this.size + 0.1) {
 			this.setShouldRemove(true);
 		}
 	};
