@@ -138,9 +138,12 @@ export default class ThreeEngine {
 	};
 
 	getVisibleHeightAndWidth = () => {
+		const height = this.visibleHeightAtZDepth(cameraZPosition, this.camera);
+		const width = this.visibleWidthAtZDepth(cameraZPosition, this.camera);
+		console.log(height, width);
 		return {
-			height: this.visibleHeightAtZDepth(cameraZPosition, this.camera),
-			width: this.visibleWidthAtZDepth(cameraZPosition, this.camera),
+			height,
+			width,
 		};
 	};
 }

@@ -29,33 +29,40 @@ export default class GameEngine {
 		ArrowRight: false,
 		Space: false,
 	};
-	totalAsteroidsTarget = 40;
-	maxVisibleDistance: number;
+	totalAsteroidsTarget = 0;
+	asteroidDenity = 10;
+	maxVisibleDistance = 0;
 
 	constructor(threeEngine: ThreeEngine) {
 		this.threeEngine = threeEngine;
-		const { height, width } = this.threeEngine.getVisibleHeightAndWidth();
-		this.maxVisibleDistance = Math.sqrt(Math.pow(height, 2) + Math.pow(width, 2)) / 2;
+		this.recalculateVisibleDistance();
 	}
+
+	setMaxVisibleDistance = (distance: number) => {
+		console.log('distance', distance);
+		this.maxVisibleDistance = distance;
+		this.totalAsteroidsTarget = Math.floor(this.asteroidDenity * distance);
+		console.log('asteroid target', this.totalAsteroidsTarget);
+		this.bullets.forEach((bullet) => {
+			bullet.setMaxVisibleDistance(distance);
+		});
+		this.asteroids.forEach((asteroid) => {
+			asteroid.setMaxVisibleDistance(distance);
+		});
+	};
 
 	recalculateVisibleDistance = () => {
 		const { height, width } = this.threeEngine.getVisibleHeightAndWidth();
-		this.maxVisibleDistance = Math.sqrt(Math.pow(height, 2) + Math.pow(width, 2)) / 2;
-		console.log('maxVisibleDistnace', this.maxVisibleDistance);
-		this.bullets.forEach((bullet) => {
-			bullet.setMaxVisibleDistance(this.maxVisibleDistance);
-		});
-		this.asteroids.forEach((asteroid) => {
-			asteroid.setMaxVisibleDistance(this.maxVisibleDistance);
-		});
+		this.setMaxVisibleDistance(Math.sqrt(Math.pow(height, 2) + Math.pow(width, 2)) / 2);
 	};
 
 	initialise = () => {
 		console.log('GameEngine initialised');
 
+		this.recalculateVisibleDistance();
+
 		const spaceshipSize = 0.5;
 
-		// create spaceship at 0,0
 		const spaceship = new Spaceship(spaceshipSize);
 
 		this.addToScene(spaceship);
@@ -177,6 +184,8 @@ export default class GameEngine {
 			this.addToScene(asteroid);
 			this.asteroids.push(asteroid);
 		}
+
+		console.log(`Total asteroids ${this.asteroids.length}`);
 	};
 
 	removeSceneObjectIfRequired = (object: SceneObject, specificArray: SceneObject[]) => {
