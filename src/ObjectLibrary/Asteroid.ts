@@ -1,5 +1,7 @@
 import * as THREE from 'three';
+import Bullet from './Bullet';
 import GameObject from './GameObject';
+import { PartialAnimationSpeeds } from './SceneObject';
 
 const baseSize = 0.3;
 const baseCoefficient = 1;
@@ -9,25 +11,48 @@ const material = new THREE.MeshLambertMaterial({
 });
 const outlineMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
 
+export enum AsteroidSize {
+	SMALL,
+	LARGE,
+}
+
+const AsteroidSizeMap = {
+	[AsteroidSize.SMALL]: 1,
+	[AsteroidSize.LARGE]: 2,
+};
+
 export default class Asteroid extends GameObject {
-	size: number;
+	radius: number;
+	size: AsteroidSize;
+	collidingBullet?: Bullet;
+
 	constructor(
-		size: number,
-		sides: number,
-		speed: { x: number; y: number },
-		startingPosition: { x: number; y: number },
+		options: {
+			size?: AsteroidSize;
+			sides?: number;
+			animationSpeeds?: PartialAnimationSpeeds;
+			startingPosition?: { x: number; y: number };
+			startingRotation?: number;
+		},
 		maxVisibleDistance: number,
 	) {
-		const calculatedSize = baseSize * size;
+		const size = options.size || AsteroidSize.SMALL;
+		const sides = options.sides || Math.floor(Math.random() * 3) + 6;
+		const animationSpeeds = options.animationSpeeds || ({} as PartialAnimationSpeeds);
+		const startingPosition = options.startingPosition || { x: 0, y: 0 };
+		const startingRotation = options.startingRotation || 0;
+
+		const calculatedRadius = baseSize * AsteroidSizeMap[size];
 		// create ateroid shape
 		const asteroidShape = new THREE.Shape();
-		asteroidShape.moveTo(calculatedSize, 0);
+		asteroidShape.moveTo(calculatedRadius, 0);
 		const coefficient = baseCoefficient / sides;
 		for (let i = 1; i < sides; i++) {
-			const randomMovement = Math.random() * calculatedSize * coefficient - (calculatedSize * coefficient) / 2;
+			const randomMovement =
+				Math.random() * calculatedRadius * coefficient - (calculatedRadius * coefficient) / 2;
 			asteroidShape.lineTo(
-				Math.cos((i * 2 * Math.PI) / sides) * calculatedSize + randomMovement,
-				Math.sin((i * 2 * Math.PI) / sides) * calculatedSize + randomMovement,
+				Math.cos((i * 2 * Math.PI) / sides) * calculatedRadius + randomMovement,
+				Math.sin((i * 2 * Math.PI) / sides) * calculatedRadius + randomMovement,
 			);
 		}
 
@@ -43,8 +68,11 @@ export default class Asteroid extends GameObject {
 		asteroid.position.x = startingPosition.x;
 		asteroid.position.y = startingPosition.y;
 
+		asteroid.rotation.z = startingRotation;
+
 		super(asteroid);
-		this.size = calculatedSize;
+		this.radius = calculatedRadius;
+		this.size = size;
 
 		this._disposableGeometries.push(geometry, outline);
 		this._meshes.push(asteroid);
@@ -52,23 +80,30 @@ export default class Asteroid extends GameObject {
 		this.setMaxVisibleDistance(maxVisibleDistance);
 
 		this.setAnimationSpeeds({
-			position: speed,
+			position: animationSpeeds.position || {
+				x: Math.random() * 0.01 - 0.005,
+				y: Math.random() * 0.01 - 0.005,
+			},
+			rotation: {
+				z: animationSpeeds.rotation?.z || 0,
+			},
 		});
 	}
 
 	beforeAnimate = (frame: number) => {
-		const distanceToSpacehip = this.getDistanceToSpaceship();
+		const distanceToSpaceship = this.getDistanceToSpaceship();
 		const maxVisibleDistance = this.getMaxVisibleDistance();
-		if (distanceToSpacehip === undefined || maxVisibleDistance === undefined) return;
-		if (distanceToSpacehip > maxVisibleDistance + 5) {
-			this.setShouldRemove(true);
-		}
-		if (distanceToSpacehip <= this.size + 0.1) {
+		if (distanceToSpaceship === undefined || maxVisibleDistance === undefined) return;
+		if (distanceToSpaceship > maxVisibleDistance + 5 || distanceToSpaceship < this.radius + 0.1) {
 			this.setShouldRemove(true);
 		}
 	};
 
-	checkCollisionWith = (arg: GameObject) => {
-		//
+	checkForBulletCollision = (bullet: Bullet, distance: number) => {
+		if (distance < this.radius) {
+			this.collidingBullet = bullet;
+			this.setShouldRemove(true);
+			bullet.setShouldRemove(true);
+		}
 	};
 }

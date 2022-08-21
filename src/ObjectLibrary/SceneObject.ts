@@ -17,7 +17,7 @@ interface PartialAnimationSpeedSet {
 	z?: number;
 }
 
-interface PartialAnimationSpeeds {
+export interface PartialAnimationSpeeds {
 	position?: PartialAnimationSpeedSet;
 	rotation?: PartialAnimationSpeedSet;
 }

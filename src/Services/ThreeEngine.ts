@@ -140,7 +140,7 @@ export default class ThreeEngine {
 	getVisibleHeightAndWidth = () => {
 		const height = this.visibleHeightAtZDepth(cameraZPosition, this.camera);
 		const width = this.visibleWidthAtZDepth(cameraZPosition, this.camera);
-		console.log(height, width);
+		console.log('Canvas dimensions', height, width);
 		return {
 			height,
 			width,

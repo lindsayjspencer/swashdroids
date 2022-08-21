@@ -1,4 +1,4 @@
-import Asteroid from 'ObjectLibrary/Asteroid';
+import Asteroid, { AsteroidSize } from 'ObjectLibrary/Asteroid';
 import Bullet from 'ObjectLibrary/Bullet';
 import SceneObject from 'ObjectLibrary/SceneObject';
 import GameObject from 'ObjectLibrary/GameObject';
@@ -68,7 +68,7 @@ export default class GameEngine {
 
 		this.threeEngine.setOnAnimate(this.onAnimate);
 
-		this.addAsteroids(this.totalAsteroidsTarget, 4, this.maxVisibleDistance + 5);
+		this.addRandomAsteroids(this.totalAsteroidsTarget, 4, this.maxVisibleDistance + 5);
 	};
 
 	dispose = () => {
@@ -128,28 +128,82 @@ export default class GameEngine {
 			this.particles.push(particle);
 		}
 		this.bullets.forEach((bullet) => {
+			// check asteroids for collision
 			this.asteroids.forEach((asteroid) => {
-				asteroid.checkCollisionWith(bullet);
+				const distance = this.threeEngine.calculateDistanceBetweenObjects(bullet._object3d, asteroid._object3d);
+				asteroid.checkForBulletCollision(bullet, distance);
+				if (asteroid.collidingBullet) {
+					if (asteroid.size === AsteroidSize.LARGE) {
+						// split into smaller asteroids
+						const quarterTurn = Math.PI / 4;
+						const travelAngle = Math.atan2(
+							bullet._animationSpeeds.position.x,
+							bullet._animationSpeeds.position.y,
+						);
+						let rotationAngle = travelAngle + quarterTurn + Math.random() * 0.4 - 0.2;
+						this.addAsteroid(
+							new Asteroid(
+								{
+									animationSpeeds: {
+										position: {
+											x: Math.sin(rotationAngle) / 60,
+											y: Math.cos(rotationAngle) / 60,
+										},
+									},
+									startingPosition: {
+										x: asteroid._object3d.position.x + Math.sin(rotationAngle) / 10,
+										y: asteroid._object3d.position.y + Math.cos(rotationAngle) / 10,
+									},
+								},
+								this.maxVisibleDistance,
+							),
+						);
+						rotationAngle = travelAngle - quarterTurn + Math.random() * 0.4 - 0.2;
+						this.addAsteroid(
+							new Asteroid(
+								{
+									animationSpeeds: {
+										position: {
+											x: Math.sin(rotationAngle) / 60,
+											y: Math.cos(rotationAngle) / 60,
+										},
+									},
+									startingPosition: {
+										x: asteroid._object3d.position.x + Math.sin(rotationAngle) / 10,
+										y: asteroid._object3d.position.y + Math.cos(rotationAngle) / 10,
+									},
+								},
+								this.maxVisibleDistance,
+							),
+						);
+					}
+					asteroid.collidingBullet = undefined;
+				}
 			});
+			// update spaceship proximity
 			this.calculateSpaceshipProximity(bullet);
 			if (!this.removeSceneObjectIfRequired(bullet, this.bullets)) {
+				// if not removed, run before animation hook
 				bullet.beforeAnimate(frame);
 			}
 		});
 		this.particles.forEach((particle) => {
 			if (!this.removeSceneObjectIfRequired(particle, this.particles)) {
+				// if not removed, run before animation hook
 				particle.beforeAnimate(frame);
 			}
 		});
 		this.asteroids.forEach((asteroid) => {
+			// update spaceship proximity
 			this.calculateSpaceshipProximity(asteroid);
 			if (!this.removeSceneObjectIfRequired(asteroid, this.asteroids)) {
+				// if not removed, run before animation hook
 				asteroid.beforeAnimate(frame);
 			}
 		});
 
 		if (this.totalAsteroidsTarget > this.asteroids.length) {
-			this.addAsteroids(
+			this.addRandomAsteroids(
 				this.totalAsteroidsTarget - this.asteroids.length,
 				this.maxVisibleDistance + 6,
 				this.maxVisibleDistance + 3,
@@ -168,23 +222,21 @@ export default class GameEngine {
 		this.addToScene(asteroid);
 	};
 
-	addAsteroids = (amount: number, minDistance: number, maxDistance: number) => {
+	addRandomAsteroids = (amount: number, minDistance: number, maxDistance: number) => {
 		const spaceship = this.getSpaceship();
 
 		for (let i = 0; i < amount; i++) {
 			const randomAngle = Math.random() * Math.PI * 2;
 			const randomDistance = Math.random() * (maxDistance - minDistance) + minDistance;
+			const randomAsteroidSize = Math.random() > 0.5 ? AsteroidSize.LARGE : AsteroidSize.SMALL;
 			this.addAsteroid(
 				new Asteroid(
-					1,
-					8,
 					{
-						x: Math.random() * 0.01 - 0.005,
-						y: Math.random() * 0.01 - 0.005,
-					},
-					{
-						x: spaceship._object3d.position.x + Math.sin(randomAngle) * randomDistance,
-						y: spaceship._object3d.position.y + Math.cos(randomAngle) * randomDistance,
+						size: randomAsteroidSize,
+						startingPosition: {
+							x: spaceship._object3d.position.x + Math.sin(randomAngle) * randomDistance,
+							y: spaceship._object3d.position.y + Math.cos(randomAngle) * randomDistance,
+						},
 					},
 					this.maxVisibleDistance,
 				),

@@ -5,7 +5,6 @@ import ThreeEngine from './Services/ThreeEngine';
 const calculateCanvasSize = () => {
 	const width = window.innerWidth;
 	const height = window.innerHeight;
-	console.log(width, height);
 	return { width, height };
 };
 
