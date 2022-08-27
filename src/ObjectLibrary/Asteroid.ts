@@ -25,6 +25,7 @@ export default class Asteroid extends GameObject {
 	radius: number;
 	size: AsteroidSize;
 	collidingBullet?: Bullet;
+	collidingWithSpaceship = false;
 
 	constructor(
 		options: {
@@ -94,7 +95,7 @@ export default class Asteroid extends GameObject {
 		const distanceToSpaceship = this.getDistanceToSpaceship();
 		const maxVisibleDistance = this.getMaxVisibleDistance();
 		if (distanceToSpaceship === undefined || maxVisibleDistance === undefined) return;
-		if (distanceToSpaceship > maxVisibleDistance + 5 || distanceToSpaceship < this.radius + 0.1) {
+		if (distanceToSpaceship > maxVisibleDistance + 5) {
 			this.setShouldRemove(true);
 		}
 	};
@@ -104,6 +105,13 @@ export default class Asteroid extends GameObject {
 			this.collidingBullet = bullet;
 			this.setShouldRemove(true);
 			bullet.setShouldRemove(true);
+		}
+	};
+
+	checkForSpaceshipCollision = () => {
+		const distanceToSpaceship = this.getDistanceToSpaceship();
+		if (distanceToSpaceship !== undefined && distanceToSpaceship < this.radius) {
+			this.collidingWithSpaceship = true;
 		}
 	};
 }

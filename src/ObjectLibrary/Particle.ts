@@ -6,7 +6,7 @@ export default class Particle extends SceneObject {
 	constructor(options: {
 		color: THREE.ColorRepresentation;
 		size: number;
-		speed: { x: number; y: number };
+		speed: { x: number; y: number; z?: number };
 		startingPosition: { x: number; y: number };
 		opacity?: number;
 		lifetime?: number;
