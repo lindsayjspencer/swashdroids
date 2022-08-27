@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import GameEngine from 'Services/GameEngine';
-import ThreeEngine from './Services/ThreeEngine';
+import GameEngine from 'Engines/GameEngine';
+import ThreeEngine from 'Engines/ThreeEngine';
 
 const calculateCanvasSize = () => {
 	const width = window.innerWidth;

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import SceneObject from './SceneObject';
-import { GameKeyState } from 'Services/GameEngine';
+import { GameKeyState } from 'Engines/GameEngine';
 
 const maxAcceleration = 0.001;
 const dragFactor = 0.99;
@@ -36,16 +36,6 @@ export default class Spaceship extends SceneObject {
 		const outlineMesh = new THREE.LineSegments(outline, outlineMaterial);
 
 		ship.add(outlineMesh);
-
-		const circleMaterial = new THREE.MeshBasicMaterial({ color: 0xeaeaea });
-
-		// add circle around ship
-		const circle = new THREE.CircleGeometry(6, 32);
-		const circleMesh = new THREE.Mesh(circle, circleMaterial);
-
-		circleMesh.position.z = -0.1;
-
-		ship.add(circleMesh);
 
 		ship.position.x = 0;
 		ship.position.y = 0;

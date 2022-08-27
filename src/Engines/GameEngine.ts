@@ -14,12 +14,22 @@ export interface GameKeyState {
 	Space: boolean;
 }
 
+export enum GameObjectType {
+	Asteroid,
+	Bullet,
+	ExhaustParticle,
+	ExplosionParticle,
+}
+
 export default class GameEngine {
 	sceneObjectArray: SceneObject[] = [];
 	spaceship?: Spaceship;
-	asteroids: Asteroid[] = [];
-	particles: Particle[] = [];
-	bullets: Bullet[] = [];
+	gameObjects = {
+		[GameObjectType.Asteroid]: [] as Asteroid[],
+		[GameObjectType.Bullet]: [] as Bullet[],
+		[GameObjectType.ExhaustParticle]: [] as Particle[],
+		[GameObjectType.ExplosionParticle]: [] as Particle[],
+	};
 	bulletAvailable = true;
 	threeEngine: ThreeEngine;
 	keyState: GameKeyState = {
@@ -41,10 +51,10 @@ export default class GameEngine {
 	setMaxVisibleDistance = (distance: number) => {
 		this.maxVisibleDistance = distance;
 		this.totalAsteroidsTarget = Math.floor(this.asteroidDenity * distance);
-		this.bullets.forEach((bullet) => {
+		this.gameObjects[GameObjectType.Bullet].forEach((bullet) => {
 			bullet.setMaxVisibleDistance(distance);
 		});
-		this.asteroids.forEach((asteroid) => {
+		this.gameObjects[GameObjectType.Asteroid].forEach((asteroid) => {
 			asteroid.setMaxVisibleDistance(distance);
 		});
 	};
@@ -77,8 +87,12 @@ export default class GameEngine {
 		this.sceneObjectArray.forEach((object) => this.threeEngine.removeFromScene(object._object3d));
 		this.sceneObjectArray = [];
 
-		this.particles = [];
-		this.bullets = [];
+		this.gameObjects = {
+			[GameObjectType.Asteroid]: [] as Asteroid[],
+			[GameObjectType.Bullet]: [] as Bullet[],
+			[GameObjectType.ExhaustParticle]: [] as Particle[],
+			[GameObjectType.ExplosionParticle]: [] as Particle[],
+		};
 
 		this.spaceship = undefined;
 		this.threeEngine.setOnAnimate(undefined);
@@ -107,13 +121,14 @@ export default class GameEngine {
 		// exhaust particles
 		if (this.keyState.ArrowUp && frame % 2 === 0) {
 			const randomRotationAngle = -spaceship._object3d.rotation.z - Math.PI + Math.random() * 0.3 - 0.15;
-			const particle = new Particle(
-				0.03,
-				{
+			const particle = new Particle({
+				color: 0x71bd31,
+				size: 0.03,
+				speed: {
 					x: Math.sin(randomRotationAngle) / (Math.random() * 30 + 25),
 					y: Math.cos(randomRotationAngle) / (Math.random() * 30 + 25),
 				},
-				{
+				startingPosition: {
 					x:
 						spaceship._object3d.position.x +
 						(Math.random() * 0.08 - 0.04) +
@@ -123,23 +138,77 @@ export default class GameEngine {
 						(Math.random() * 0.08 - 0.04) +
 						Math.cos(randomRotationAngle) / 8,
 				},
-			);
+			});
 			this.addToScene(particle);
-			this.particles.push(particle);
+			this.gameObjects[GameObjectType.ExhaustParticle].push(particle);
 		}
-		this.bullets.forEach((bullet) => {
+		this.gameObjects[GameObjectType.Bullet].forEach((bullet) => {
 			// check asteroids for collision
-			this.asteroids.forEach((asteroid) => {
+			this.gameObjects[GameObjectType.Asteroid].forEach((asteroid) => {
 				const distance = this.threeEngine.calculateDistanceBetweenObjects(bullet._object3d, asteroid._object3d);
 				asteroid.checkForBulletCollision(bullet, distance);
 				if (asteroid.collidingBullet) {
+					const impactAngle = Math.atan2(
+						asteroid.collidingBullet._object3d.position.y - asteroid._object3d.position.y,
+						asteroid.collidingBullet._object3d.position.x - asteroid._object3d.position.x,
+					);
+					const travelAngle = Math.atan2(
+						bullet._animationSpeeds.position.x,
+						bullet._animationSpeeds.position.y,
+					);
+					// Add explosion particles
+					console.log('impact angle', impactAngle);
+					for (let i = 0; i < 3; i++) {
+						const particle = new Particle({
+							color: 0x71bd31,
+							size: 0.03,
+							speed: {
+								x: Math.sin(impactAngle) / (Math.random() * 30 + 25),
+								y: Math.cos(impactAngle) / (Math.random() * 30 + 25),
+							},
+							startingPosition: {
+								x:
+									asteroid.collidingBullet._object3d.position.x +
+									(Math.random() * 0.08 - 0.04) +
+									Math.sin(impactAngle) / 8,
+								y:
+									asteroid.collidingBullet._object3d.position.y +
+									(Math.random() * 0.08 - 0.04) +
+									Math.cos(impactAngle) / 8,
+							},
+							opacity: Math.random(),
+							lifetime: Math.random(),
+						});
+						this.addToScene(particle);
+						this.gameObjects[GameObjectType.ExplosionParticle].push(particle);
+					}
+					for (let i = 0; i < 12; i++) {
+						const particle = new Particle({
+							color: 0x71bd31,
+							size: 0.03,
+							speed: {
+								x: Math.sin(travelAngle) / (Math.random() * 30 + 25),
+								y: Math.cos(travelAngle) / (Math.random() * 30 + 25),
+							},
+							startingPosition: {
+								x:
+									asteroid.collidingBullet._object3d.position.x +
+									(Math.random() * 0.08 - 0.04) +
+									Math.sin(travelAngle) / 8,
+								y:
+									asteroid.collidingBullet._object3d.position.y +
+									(Math.random() * 0.08 - 0.04) +
+									Math.cos(travelAngle) / 8,
+							},
+							opacity: Math.random(),
+							lifetime: Math.random(),
+						});
+						this.addToScene(particle);
+						this.gameObjects[GameObjectType.ExplosionParticle].push(particle);
+					}
 					if (asteroid.size === AsteroidSize.LARGE) {
 						// split into smaller asteroids
 						const quarterTurn = Math.PI / 4;
-						const travelAngle = Math.atan2(
-							bullet._animationSpeeds.position.x,
-							bullet._animationSpeeds.position.y,
-						);
 						let rotationAngle = travelAngle + quarterTurn + Math.random() * 0.4 - 0.2;
 						this.addAsteroid(
 							new Asteroid(
@@ -182,29 +251,35 @@ export default class GameEngine {
 			});
 			// update spaceship proximity
 			this.calculateSpaceshipProximity(bullet);
-			if (!this.removeSceneObjectIfRequired(bullet, this.bullets)) {
+			if (!this.removeSceneObjectIfRequired(bullet, this.gameObjects[GameObjectType.Bullet])) {
 				// if not removed, run before animation hook
 				bullet.beforeAnimate(frame);
 			}
 		});
-		this.particles.forEach((particle) => {
-			if (!this.removeSceneObjectIfRequired(particle, this.particles)) {
+		this.gameObjects[GameObjectType.ExhaustParticle].forEach((particle) => {
+			if (!this.removeSceneObjectIfRequired(particle, this.gameObjects[GameObjectType.ExhaustParticle])) {
 				// if not removed, run before animation hook
 				particle.beforeAnimate(frame);
 			}
 		});
-		this.asteroids.forEach((asteroid) => {
+		this.gameObjects[GameObjectType.ExplosionParticle].forEach((particle) => {
+			if (!this.removeSceneObjectIfRequired(particle, this.gameObjects[GameObjectType.ExplosionParticle])) {
+				// if not removed, run before animation hook
+				particle.beforeAnimate(frame);
+			}
+		});
+		this.gameObjects[GameObjectType.Asteroid].forEach((asteroid) => {
 			// update spaceship proximity
 			this.calculateSpaceshipProximity(asteroid);
-			if (!this.removeSceneObjectIfRequired(asteroid, this.asteroids)) {
+			if (!this.removeSceneObjectIfRequired(asteroid, this.gameObjects[GameObjectType.Asteroid])) {
 				// if not removed, run before animation hook
 				asteroid.beforeAnimate(frame);
 			}
 		});
 
-		if (this.totalAsteroidsTarget > this.asteroids.length) {
+		if (this.totalAsteroidsTarget > this.gameObjects[GameObjectType.Asteroid].length) {
 			this.addRandomAsteroids(
-				this.totalAsteroidsTarget - this.asteroids.length,
+				this.totalAsteroidsTarget - this.gameObjects[GameObjectType.Asteroid].length,
 				this.maxVisibleDistance + 6,
 				this.maxVisibleDistance + 3,
 			);
@@ -218,7 +293,7 @@ export default class GameEngine {
 	};
 
 	addAsteroid = (asteroid: Asteroid) => {
-		this.asteroids.push(asteroid);
+		this.gameObjects[GameObjectType.Asteroid].push(asteroid);
 		this.addToScene(asteroid);
 	};
 
@@ -280,7 +355,7 @@ export default class GameEngine {
 			this.maxVisibleDistance,
 		);
 		this.addToScene(bullet);
-		this.bullets.push(bullet);
+		this.gameObjects[GameObjectType.Bullet].push(bullet);
 	};
 
 	onKeyDown = (event: KeyboardEvent) => {
