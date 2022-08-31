@@ -1,9 +1,12 @@
 import * as THREE from 'three';
+import Stats from 'three/examples/jsm/libs/stats.module';
 
 const cameraZPosition = 50;
 
 export default class ThreeEngine {
 	domElement: HTMLCanvasElement;
+	statsDomElement: HTMLDivElement;
+	stats: Stats;
 	camera: THREE.PerspectiveCamera;
 	scene: THREE.Scene;
 	renderer: THREE.WebGLRenderer;
@@ -17,6 +20,10 @@ export default class ThreeEngine {
 
 	getCanvasElement = () => {
 		return this.domElement;
+	};
+
+	getStatsDomElement = () => {
+		return this.statsDomElement;
 	};
 
 	constructor(width: number, height: number) {
@@ -38,6 +45,9 @@ export default class ThreeEngine {
 
 		this.domElement = this.renderer.domElement;
 		this.renderer.setSize(width, height);
+
+		this.stats = Stats();
+		this.statsDomElement = this.stats.dom;
 	}
 
 	frame = 0;
@@ -47,6 +57,7 @@ export default class ThreeEngine {
 		this.requestAnimationFrameId = requestAnimationFrame(this.animate);
 		this.onAnimate?.(this.frame);
 		this.renderer.render(this.scene, this.camera);
+		this.stats.update();
 	};
 
 	initialise = () => {
@@ -75,12 +86,12 @@ export default class ThreeEngine {
 		this.renderer.setSize(width, height);
 	};
 
-	addToScene = (object: THREE.Object3D) => {
-		this.scene.add(object);
+	addToScene = (objects: THREE.Object3D[]) => {
+		this.scene.add(...objects);
 	};
 
-	removeFromScene = (object: THREE.Object3D) => {
-		this.scene.remove(object);
+	removeFromScene = (objects: THREE.Object3D[]) => {
+		this.scene.remove(...objects);
 	};
 
 	setCameraPosition = (x: number, y: number) => {

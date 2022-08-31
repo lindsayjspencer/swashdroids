@@ -22,21 +22,19 @@ export enum GameObjectType {
 	ExplosionParticle,
 }
 
+const createBlankGameObjectMap = () => ({
+	[GameObjectType.Asteroid]: [] as Asteroid[],
+	[GameObjectType.Bullet]: [] as Bullet[],
+	[GameObjectType.ExhaustParticle]: [] as Particle[],
+	[GameObjectType.ExplosionParticle]: [] as Particle[],
+});
+
 export default class GameEngine {
 	sceneObjectArray: SceneObject[] = [];
 	spaceship?: Spaceship;
-	gameObjects = {
-		[GameObjectType.Asteroid]: [] as Asteroid[],
-		[GameObjectType.Bullet]: [] as Bullet[],
-		[GameObjectType.ExhaustParticle]: [] as Particle[],
-		[GameObjectType.ExplosionParticle]: [] as Particle[],
-	};
-	gameObjectsToAdd = {
-		[GameObjectType.Asteroid]: [] as Asteroid[],
-		[GameObjectType.Bullet]: [] as Bullet[],
-		[GameObjectType.ExhaustParticle]: [] as Particle[],
-		[GameObjectType.ExplosionParticle]: [] as Particle[],
-	};
+	gameObjects = createBlankGameObjectMap();
+	gameObjectsToAdd = createBlankGameObjectMap();
+	gameObjectsToRemove = createBlankGameObjectMap();
 	bulletAvailable = true;
 	threeEngine: ThreeEngine;
 	keyState: GameKeyState = {
@@ -47,7 +45,7 @@ export default class GameEngine {
 		Space: false,
 	};
 	totalAsteroidsTarget = 0;
-	asteroidDenity = 10;
+	asteroidDenity = 100;
 	maxVisibleDistance = 0;
 
 	constructor(threeEngine: ThreeEngine) {
@@ -80,7 +78,7 @@ export default class GameEngine {
 
 		const spaceship = new Spaceship(spaceshipSize);
 
-		this.addToScene(spaceship);
+		this.addToScene([spaceship]);
 		this.spaceship = spaceship;
 
 		this.threeEngine.setOnAnimate(this.onAnimate);
@@ -91,35 +89,26 @@ export default class GameEngine {
 	dispose = () => {
 		console.log('GameEngine disposed');
 		// clear objects from scene
-		this.sceneObjectArray.forEach((object) => this.threeEngine.removeFromScene(object._object3d));
+		this.threeEngine.removeFromScene(this.sceneObjectArray.map((object) => object._object3d));
 		this.sceneObjectArray = [];
 
-		this.gameObjects = {
-			[GameObjectType.Asteroid]: [] as Asteroid[],
-			[GameObjectType.Bullet]: [] as Bullet[],
-			[GameObjectType.ExhaustParticle]: [] as Particle[],
-			[GameObjectType.ExplosionParticle]: [] as Particle[],
-		};
+		this.gameObjects = createBlankGameObjectMap();
 
-		this.gameObjectsToAdd = {
-			[GameObjectType.Asteroid]: [] as Asteroid[],
-			[GameObjectType.Bullet]: [] as Bullet[],
-			[GameObjectType.ExhaustParticle]: [] as Particle[],
-			[GameObjectType.ExplosionParticle]: [] as Particle[],
-		};
+		this.gameObjectsToAdd = createBlankGameObjectMap();
+		this.gameObjectsToRemove = createBlankGameObjectMap();
 
 		this.spaceship = undefined;
 		this.threeEngine.setOnAnimate(undefined);
 	};
 
-	addToScene = (object: SceneObject) => {
-		this.sceneObjectArray.push(object);
-		this.threeEngine.addToScene(object._object3d);
+	addToScene = (objects: SceneObject[]) => {
+		this.sceneObjectArray = this.sceneObjectArray.concat(objects);
+		this.threeEngine.addToScene(objects.map((object) => object._object3d));
 	};
 
-	removeFromScene = (object: SceneObject) => {
-		this.sceneObjectArray = this.sceneObjectArray.filter((sceneObject) => sceneObject !== object);
-		this.threeEngine.removeFromScene(object._object3d);
+	removeFromScene = (objects: SceneObject[]) => {
+		this.sceneObjectArray = this.sceneObjectArray.filter((sceneObject) => !objects.includes(sceneObject));
+		this.threeEngine.removeFromScene(objects.map((object) => object._object3d));
 	};
 
 	getSpaceship = () => {
@@ -275,46 +264,59 @@ export default class GameEngine {
 		}
 		this.gameObjects[GameObjectType.Bullet].forEach((bullet) => {
 			// check asteroids for collision
-			this.gameObjects[GameObjectType.Asteroid].forEach((asteroid) => {
-				const distance = this.threeEngine.calculateDistanceBetweenObjects(bullet._object3d, asteroid._object3d);
-				asteroid.checkForBulletCollision(bullet, distance);
-				if (asteroid.collidingBullet) {
-					this.asteroidCollision(asteroid, asteroid.collidingBullet);
-					asteroid.collidingBullet = undefined;
-				}
-			});
-			// update spaceship proximity
-			this.calculateSpaceshipProximity(bullet);
-			if (!this.removeSceneObjectIfRequired(bullet, this.gameObjects[GameObjectType.Bullet])) {
-				// if not removed, run before animation hook
+			if (frame % 3 === 0) {
+				this.gameObjects[GameObjectType.Asteroid].forEach((asteroid) => {
+					const distance = this.threeEngine.calculateDistanceBetweenObjects(
+						bullet._object3d,
+						asteroid._object3d,
+					);
+					asteroid.checkForBulletCollision(bullet, distance);
+					if (asteroid.collidingBullet) {
+						this.asteroidCollision(asteroid, asteroid.collidingBullet);
+						asteroid.collidingBullet = undefined;
+					}
+				});
+				// update spaceship proximity
+				this.calculateSpaceshipProximity(bullet);
+			}
+			if (bullet.getShouldRemove()) {
+				this.gameObjectsToRemove[GameObjectType.Bullet].push(bullet);
+			} else {
 				bullet.beforeAnimate(frame);
 			}
 		});
 		this.gameObjects[GameObjectType.ExhaustParticle].forEach((particle) => {
-			if (!this.removeSceneObjectIfRequired(particle, this.gameObjects[GameObjectType.ExhaustParticle])) {
-				// if not removed, run before animation hook
+			if (particle.getShouldRemove()) {
+				this.gameObjectsToRemove[GameObjectType.ExhaustParticle].push(particle);
+			} else {
 				particle.beforeAnimate(frame);
 			}
 		});
 		this.gameObjects[GameObjectType.ExplosionParticle].forEach((particle) => {
-			if (!this.removeSceneObjectIfRequired(particle, this.gameObjects[GameObjectType.ExplosionParticle])) {
-				// if not removed, run before animation hook
+			if (particle.getShouldRemove()) {
+				this.gameObjectsToRemove[GameObjectType.ExplosionParticle].push(particle);
+			} else {
 				particle.beforeAnimate(frame);
 			}
 		});
 		this.gameObjects[GameObjectType.Asteroid].forEach((asteroid) => {
-			// update spaceship proximity
-			this.calculateSpaceshipProximity(asteroid);
+			if ((frame + 1) % 3 === 0) {
+				// update spaceship proximity
+				this.calculateSpaceshipProximity(asteroid);
+			}
 			asteroid.checkForSpaceshipCollision();
 			if (asteroid.collidingWithSpaceship) {
 				this.asteroidCollision(asteroid, spaceship);
 				asteroid.collidingWithSpaceship = false;
 			}
-			if (!this.removeSceneObjectIfRequired(asteroid, this.gameObjects[GameObjectType.Asteroid])) {
-				// if not removed, run before animation hook
+			if (asteroid.getShouldRemove()) {
+				this.gameObjectsToRemove[GameObjectType.Asteroid].push(asteroid);
+			} else {
 				asteroid.beforeAnimate(frame);
 			}
 		});
+
+		this.removeObjectsFromScene();
 
 		if (this.totalAsteroidsTarget > this.gameObjects[GameObjectType.Asteroid].length) {
 			this.addRandomAsteroids(
@@ -331,30 +333,75 @@ export default class GameEngine {
 		this.threeEngine.setCameraPosition(spaceship._object3d.position.x, spaceship._object3d.position.y);
 	};
 
+	removeObjectsFromScene = () => {
+		const objectsToRemove: SceneObject[] = [];
+		const bulletsToRemove: SceneObject[] = [];
+		this.gameObjectsToRemove[GameObjectType.Bullet].forEach((bullet) => {
+			bulletsToRemove.push(bullet);
+			objectsToRemove.push(bullet);
+		});
+		this.gameObjects[GameObjectType.Bullet] = this.gameObjects[GameObjectType.Bullet].filter(
+			(bullet) => !bulletsToRemove.includes(bullet),
+		);
+
+		const asteroidsToRemove: SceneObject[] = [];
+		this.gameObjectsToRemove[GameObjectType.Asteroid].forEach((asteroid) => {
+			asteroidsToRemove.push(asteroid);
+			objectsToRemove.push(asteroid);
+		});
+		this.gameObjects[GameObjectType.Asteroid] = this.gameObjects[GameObjectType.Asteroid].filter(
+			(asteroid) => !asteroidsToRemove.includes(asteroid),
+		);
+
+		const exhaustParticlesToRemove: SceneObject[] = [];
+		this.gameObjectsToRemove[GameObjectType.ExhaustParticle].forEach((particle) => {
+			exhaustParticlesToRemove.push(particle);
+			objectsToRemove.push(particle);
+		});
+		this.gameObjects[GameObjectType.ExhaustParticle] = this.gameObjects[GameObjectType.ExhaustParticle].filter(
+			(particle) => !exhaustParticlesToRemove.includes(particle),
+		);
+
+		const explosionParticlesToRemove: SceneObject[] = [];
+		this.gameObjectsToRemove[GameObjectType.ExplosionParticle].forEach((particle) => {
+			explosionParticlesToRemove.push(particle);
+			objectsToRemove.push(particle);
+		});
+		this.gameObjects[GameObjectType.ExplosionParticle] = this.gameObjects[GameObjectType.ExplosionParticle].filter(
+			(particle) => !explosionParticlesToRemove.includes(particle),
+		);
+
+		if (objectsToRemove.length > 0) {
+			this.removeFromScene(objectsToRemove);
+			objectsToRemove.forEach((object) => object.dispose());
+		}
+
+		this.gameObjectsToRemove = createBlankGameObjectMap();
+	};
+
 	addObjectsToScene = () => {
+		const objectsToAdd: SceneObject[] = [];
 		this.gameObjectsToAdd[GameObjectType.Bullet].forEach((bullet) => {
 			this.gameObjects[GameObjectType.Bullet].push(bullet);
-			this.addToScene(bullet);
+			objectsToAdd.push(bullet);
 		});
 		this.gameObjectsToAdd[GameObjectType.ExhaustParticle].forEach((particle) => {
 			this.gameObjects[GameObjectType.ExhaustParticle].push(particle);
-			this.addToScene(particle);
+			objectsToAdd.push(particle);
 		});
 		this.gameObjectsToAdd[GameObjectType.ExplosionParticle].forEach((particle) => {
 			this.gameObjects[GameObjectType.ExplosionParticle].push(particle);
-			this.addToScene(particle);
+			objectsToAdd.push(particle);
 		});
 		this.gameObjectsToAdd[GameObjectType.Asteroid].forEach((asteroid) => {
 			this.gameObjects[GameObjectType.Asteroid].push(asteroid);
-			this.addToScene(asteroid);
+			objectsToAdd.push(asteroid);
 		});
 
-		this.gameObjectsToAdd = {
-			[GameObjectType.Bullet]: [],
-			[GameObjectType.ExhaustParticle]: [],
-			[GameObjectType.ExplosionParticle]: [],
-			[GameObjectType.Asteroid]: [],
-		};
+		if (objectsToAdd.length === 0) return;
+		this.addToScene(objectsToAdd);
+
+		this.gameObjectsToAdd = createBlankGameObjectMap();
 	};
 
 	addAsteroid = (asteroid: Asteroid) => {
@@ -381,16 +428,6 @@ export default class GameEngine {
 				),
 			);
 		}
-	};
-
-	removeSceneObjectIfRequired = (object: SceneObject, specificArray: SceneObject[]) => {
-		if (object.getShouldRemove()) {
-			this.removeFromScene(object);
-			specificArray.splice(specificArray.indexOf(object), 1);
-			object.dispose();
-			return true;
-		}
-		return false;
 	};
 
 	calculateSpaceshipProximity = (object: GameObject) => {

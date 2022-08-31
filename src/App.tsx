@@ -23,10 +23,13 @@ function App() {
 		const mountRefCurrent = mountRef.current;
 		if (mountRefCurrent === null) return;
 		const canvas = threeEngine.getCanvasElement();
+		const stats = threeEngine.getStatsDomElement();
 		mountRefCurrent.appendChild(canvas);
 		threeEngine.initialise();
+		document.body.appendChild(stats);
 		return () => {
 			mountRefCurrent.removeChild(canvas);
+			document.body.removeChild(stats);
 			threeEngine.dispose();
 		};
 	}, [mountRef, threeEngine]);
