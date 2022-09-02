@@ -177,15 +177,15 @@ export default class GameEngine {
 			this.gameObjectsToAdd[GameObjectType.ExplosionParticle].push(particle);
 		}
 		for (let i = 0; i < 10; i++) {
-			const zSpeed = Math.random() * 3 - 1.5;
+			const zSpeed = Math.abs(Math.random() * 1 - 0.5);
 			const randomAngle = Math.random() * Math.PI * 2;
 			const randomSpeed = Math.random() * 0.01 + 0.01;
 			const particle = new Particle({
 				color: 0x000000,
-				size: 0.03,
+				size: 0.02,
 				speed: {
-					x: (Math.sin(randomAngle) * randomSpeed) / Math.max(1, Math.abs(zSpeed)),
-					y: (Math.cos(randomAngle) * randomSpeed) / Math.max(1, Math.abs(zSpeed)),
+					x: (Math.sin(randomAngle) * randomSpeed) / Math.max(0.5, Math.abs(zSpeed)),
+					y: (Math.cos(randomAngle) * randomSpeed) / Math.max(0.5, Math.abs(zSpeed)),
 					z: zSpeed,
 				},
 				startingPosition: {
@@ -193,7 +193,7 @@ export default class GameEngine {
 					y: explosionPosition.y + Math.cos(randomAngle) * randomSpeed * 3,
 				},
 				opacity: Math.random(),
-				lifetime: Math.random() * 1.5,
+				lifetime: Math.random(),
 			});
 			this.gameObjectsToAdd[GameObjectType.ExplosionParticle].push(particle);
 		}
