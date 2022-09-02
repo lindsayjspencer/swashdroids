@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import Bullet from './Bullet';
 import GameObject from './GameObject';
-import { PartialAnimationSpeeds } from './SceneObject';
+import SceneObject, { PartialAnimationSpeeds } from './SceneObject';
+import Spaceship from './Spaceship';
 
 const baseSize = 0.3;
 const baseCoefficient = 1;
@@ -24,8 +25,13 @@ const AsteroidSizeMap = {
 export default class Asteroid extends GameObject {
 	radius: number;
 	size: AsteroidSize;
-	collidingBullet?: Bullet;
-	collidingWithSpaceship = false;
+	addAsteroid: (asteroid: Asteroid) => void;
+	addExplosion: (
+		impactAngle: number,
+		travelAngle: number,
+		impactPosition: THREE.Vector3,
+		travelPosition: THREE.Vector3,
+	) => void;
 
 	constructor(
 		options: {
@@ -36,6 +42,13 @@ export default class Asteroid extends GameObject {
 			startingRotation?: number;
 		},
 		maxVisibleDistance: number,
+		addAsteroid: (asteroid: Asteroid) => void,
+		addExplosion: (
+			impactAngle: number,
+			travelAngle: number,
+			impactPosition: THREE.Vector3,
+			travelPosition: THREE.Vector3,
+		) => void,
 	) {
 		const size = options.size || AsteroidSize.SMALL;
 		const sides = options.sides || Math.floor(Math.random() * 3) + 6;
@@ -89,6 +102,9 @@ export default class Asteroid extends GameObject {
 				z: animationSpeeds.rotation?.z || 0,
 			},
 		});
+
+		this.addAsteroid = addAsteroid;
+		this.addExplosion = addExplosion;
 	}
 
 	beforeAnimate = (frame: number) => {
@@ -102,16 +118,75 @@ export default class Asteroid extends GameObject {
 
 	checkForBulletCollision = (bullet: Bullet, distance: number) => {
 		if (distance < this.radius) {
-			this.collidingBullet = bullet;
 			this.setShouldRemove(true);
 			bullet.setShouldRemove(true);
+			this.collision(bullet);
 		}
 	};
 
-	checkForSpaceshipCollision = () => {
+	checkForSpaceshipCollision = (spaceship: Spaceship) => {
 		const distanceToSpaceship = this.getDistanceToSpaceship();
 		if (distanceToSpaceship !== undefined && distanceToSpaceship < this.radius) {
-			this.collidingWithSpaceship = true;
+			this.collision(spaceship);
 		}
+	};
+
+	collision = (collidingObject: SceneObject) => {
+		const impactAngle = Math.atan2(
+			collidingObject._object3d.position.y - this._object3d.position.y,
+			collidingObject._object3d.position.x - this._object3d.position.x,
+		);
+		const travelAngle = Math.atan2(
+			collidingObject._animationSpeeds.position.x,
+			collidingObject._animationSpeeds.position.y,
+		);
+		this.addExplosion(impactAngle, travelAngle, collidingObject._object3d.position, this._object3d.position);
+		if (this.size === AsteroidSize.LARGE) {
+			// split into smaller asteroids
+			const maxVisibleDistance = this.getMaxVisibleDistance();
+			if (maxVisibleDistance === undefined) return;
+			const quarterTurn = Math.PI / 4;
+			let rotationAngle = travelAngle + quarterTurn + Math.random() * 0.4 - 0.2;
+			this.addAsteroid(
+				new Asteroid(
+					{
+						animationSpeeds: {
+							position: {
+								x: Math.sin(rotationAngle) / 60,
+								y: Math.cos(rotationAngle) / 60,
+							},
+						},
+						startingPosition: {
+							x: this._object3d.position.x + Math.sin(rotationAngle) / 10,
+							y: this._object3d.position.y + Math.cos(rotationAngle) / 10,
+						},
+					},
+					maxVisibleDistance,
+					this.addAsteroid,
+					this.addExplosion,
+				),
+			);
+			rotationAngle = travelAngle - quarterTurn + Math.random() * 0.4 - 0.2;
+			this.addAsteroid(
+				new Asteroid(
+					{
+						animationSpeeds: {
+							position: {
+								x: Math.sin(rotationAngle) / 60,
+								y: Math.cos(rotationAngle) / 60,
+							},
+						},
+						startingPosition: {
+							x: this._object3d.position.x + Math.sin(rotationAngle) / 10,
+							y: this._object3d.position.y + Math.cos(rotationAngle) / 10,
+						},
+					},
+					maxVisibleDistance,
+					this.addAsteroid,
+					this.addExplosion,
+				),
+			);
+		}
+		this.setShouldRemove(true);
 	};
 }

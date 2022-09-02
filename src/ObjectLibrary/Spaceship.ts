@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import SceneObject from './SceneObject';
-import { GameKeyState } from 'Engines/GameEngine';
+import { GameKeyState, GameObjectsMap, GameObjectType } from 'Engines/GameEngine';
+import Particle from './Particle';
+import Bullet from './Bullet';
 
 const maxAcceleration = 0.001;
 const dragFactor = 0.99;
@@ -15,8 +17,12 @@ export default class Spaceship extends SceneObject {
 		y: 0,
 		rotation: 0,
 	};
+	getGameObjectsToAdd: () => GameObjectsMap;
+	bulletAvailable = true;
+	_maxVisibleDistance: number;
 
-	constructor(size: number) {
+	constructor(options: { size: number; getGameObjectsToAdd: () => GameObjectsMap; maxVisibleDistance: number }) {
+		const { size, getGameObjectsToAdd, maxVisibleDistance } = options;
 		const material = new THREE.MeshPhongMaterial({ side: THREE.DoubleSide, color: 0x71bd31 });
 
 		const shipShape = new THREE.Shape();
@@ -46,7 +52,18 @@ export default class Spaceship extends SceneObject {
 		this._disposableGeometries.push(shipGeometry, outline);
 		this._disposableMaterials.push(material, outlineMaterial);
 		this._meshes.push(ship);
+
+		this.getGameObjectsToAdd = getGameObjectsToAdd;
+		this._maxVisibleDistance = maxVisibleDistance;
 	}
+
+	setMaxVisibleDistance = (distance: number) => {
+		this._maxVisibleDistance = distance;
+	};
+
+	getMaxVisibleDistance = () => {
+		return this._maxVisibleDistance;
+	};
 
 	modifySpeed = () => {
 		this.speed.x += maxAcceleration * Math.cos(this._object3d.rotation.z + Math.PI / 2);
@@ -66,6 +83,29 @@ export default class Spaceship extends SceneObject {
 		if (keyState.ArrowUp) {
 			this.modifySpeed();
 			this.applyDrag(1);
+			// exhaust particles
+			if (frame % 2 === 0) {
+				const randomRotationAngle = -this._object3d.rotation.z - Math.PI + Math.random() * 0.3 - 0.15;
+				const particle = new Particle({
+					color: 0x71bd31,
+					size: 0.03,
+					speed: {
+						x: Math.sin(randomRotationAngle) / (Math.random() * 30 + 25),
+						y: Math.cos(randomRotationAngle) / (Math.random() * 30 + 25),
+					},
+					startingPosition: {
+						x:
+							this._object3d.position.x +
+							(Math.random() * 0.08 - 0.04) +
+							Math.sin(randomRotationAngle) / 8,
+						y:
+							this._object3d.position.y +
+							(Math.random() * 0.08 - 0.04) +
+							Math.cos(randomRotationAngle) / 8,
+					},
+				});
+				this.getGameObjectsToAdd()[GameObjectType.ExhaustParticle].push(particle);
+			}
 		}
 		if (keyState.ArrowLeft) {
 			this.speed.rotation += rotationalAcceleration;
@@ -87,5 +127,24 @@ export default class Spaceship extends SceneObject {
 				z: this.speed.rotation,
 			},
 		});
+	};
+
+	fireBullet = () => {
+		if (!this.bulletAvailable) return;
+		this.bulletAvailable = false;
+		const rotationAngle = -this._object3d.rotation.z;
+		const bullet = new Bullet(
+			0.03,
+			{
+				x: Math.sin(rotationAngle) / 6,
+				y: Math.cos(rotationAngle) / 6,
+			},
+			{
+				x: this._object3d.position.x + Math.sin(rotationAngle) / 10,
+				y: this._object3d.position.y + Math.cos(rotationAngle) / 10,
+			},
+			this._maxVisibleDistance,
+		);
+		this.getGameObjectsToAdd()[GameObjectType.Bullet].push(bullet);
 	};
 }
