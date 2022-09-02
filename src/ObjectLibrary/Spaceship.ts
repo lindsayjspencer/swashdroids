@@ -37,7 +37,7 @@ export default class Spaceship extends SceneObject {
 
 		ship.add(outlineMesh);
 
-		ship.position.x = 0;
+		ship.position.x = 1;
 		ship.position.y = 0;
 		ship.position.z = 0;
 

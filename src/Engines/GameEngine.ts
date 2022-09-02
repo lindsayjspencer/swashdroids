@@ -6,6 +6,7 @@ import Particle from 'ObjectLibrary/Particle';
 import Spaceship from 'ObjectLibrary/Spaceship';
 import ThreeEngine from './ThreeEngine';
 import { Vector3 } from 'three';
+import CrashEnemy from 'ObjectLibrary/CrashEnemy';
 
 export interface GameKeyState {
 	ArrowUp: boolean;
@@ -17,6 +18,7 @@ export interface GameKeyState {
 
 export enum GameObjectType {
 	Asteroid,
+	CrashEnemy,
 	Bullet,
 	ExhaustParticle,
 	ExplosionParticle,
@@ -24,6 +26,7 @@ export enum GameObjectType {
 
 const createBlankGameObjectMap = () => ({
 	[GameObjectType.Asteroid]: [] as Asteroid[],
+	[GameObjectType.CrashEnemy]: [] as CrashEnemy[],
 	[GameObjectType.Bullet]: [] as Bullet[],
 	[GameObjectType.ExhaustParticle]: [] as Particle[],
 	[GameObjectType.ExplosionParticle]: [] as Particle[],
@@ -62,6 +65,9 @@ export default class GameEngine {
 		this.gameObjects[GameObjectType.Asteroid].forEach((asteroid) => {
 			asteroid.setMaxVisibleDistance(distance);
 		});
+		this.gameObjects[GameObjectType.CrashEnemy].forEach((crashEnemy) => {
+			crashEnemy.setMaxVisibleDistance(distance);
+		});
 	};
 
 	recalculateVisibleDistance = () => {
@@ -80,6 +86,18 @@ export default class GameEngine {
 
 		this.addToScene([spaceship]);
 		this.spaceship = spaceship;
+
+		const crashEnemy = new CrashEnemy(
+			{
+				startingPosition: {
+					x: 2,
+					y: 1,
+				},
+			},
+			1,
+			this.maxVisibleDistance,
+		);
+		this.gameObjectsToAdd[GameObjectType.CrashEnemy].push(crashEnemy);
 
 		this.threeEngine.setOnAnimate(this.onAnimate);
 
@@ -120,7 +138,6 @@ export default class GameEngine {
 
 	addExplosion = (impactAngle: number, travelAngle: number, impactPosition: Vector3, explosionPosition: Vector3) => {
 		// Add explosion particles
-		console.log('impact angle', impactAngle);
 		for (let i = 0; i < 3; i++) {
 			const zSpeed = Math.random() * 3 - 1.5;
 			const particle = new Particle({
@@ -315,6 +332,17 @@ export default class GameEngine {
 				asteroid.beforeAnimate(frame);
 			}
 		});
+		this.gameObjects[GameObjectType.CrashEnemy].forEach((enemy) => {
+			if ((frame + 2) % 3 === 0) {
+				// update spaceship proximity
+				this.calculateSpaceshipProximity(enemy);
+			}
+			if (enemy.getShouldRemove()) {
+				this.gameObjectsToRemove[GameObjectType.CrashEnemy].push(enemy);
+			} else {
+				enemy.beforeAnimate(frame);
+			}
+		});
 
 		this.removeObjectsFromScene();
 
@@ -353,6 +381,15 @@ export default class GameEngine {
 			(asteroid) => !asteroidsToRemove.includes(asteroid),
 		);
 
+		const crashEnemyToRemove: SceneObject[] = [];
+		this.gameObjectsToRemove[GameObjectType.CrashEnemy].forEach((crashEnemy) => {
+			crashEnemyToRemove.push(crashEnemy);
+			objectsToRemove.push(crashEnemy);
+		});
+		this.gameObjects[GameObjectType.Asteroid] = this.gameObjects[GameObjectType.Asteroid].filter(
+			(asteroid) => !asteroidsToRemove.includes(asteroid),
+		);
+
 		const exhaustParticlesToRemove: SceneObject[] = [];
 		this.gameObjectsToRemove[GameObjectType.ExhaustParticle].forEach((particle) => {
 			exhaustParticlesToRemove.push(particle);
@@ -384,6 +421,10 @@ export default class GameEngine {
 		this.gameObjectsToAdd[GameObjectType.Bullet].forEach((bullet) => {
 			this.gameObjects[GameObjectType.Bullet].push(bullet);
 			objectsToAdd.push(bullet);
+		});
+		this.gameObjectsToAdd[GameObjectType.CrashEnemy].forEach((crashEnemy) => {
+			this.gameObjects[GameObjectType.CrashEnemy].push(crashEnemy);
+			objectsToAdd.push(crashEnemy);
 		});
 		this.gameObjectsToAdd[GameObjectType.ExhaustParticle].forEach((particle) => {
 			this.gameObjects[GameObjectType.ExhaustParticle].push(particle);

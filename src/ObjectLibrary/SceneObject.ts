@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-interface AnimationSpeeds {
+export interface AnimationSpeeds {
 	position: AnimationSpeedSet;
 	rotation: AnimationSpeedSet;
 }
@@ -62,6 +62,10 @@ export default abstract class SceneObject {
 				z: speeds.rotation?.z ?? this._animationSpeeds.rotation.z,
 			},
 		};
+	};
+
+	getAnimationSpeeds = () => {
+		return this._animationSpeeds;
 	};
 
 	setAnimationSpeed = (speed: number) => {
