@@ -128,6 +128,7 @@ export default class Asteroid extends GameObject {
 		const distanceToSpaceship = this.getDistanceToSpaceship();
 		if (distanceToSpaceship !== undefined && distanceToSpaceship < this.radius) {
 			this.collision(spaceship);
+			spaceship.handleCollision();
 		}
 	};
 

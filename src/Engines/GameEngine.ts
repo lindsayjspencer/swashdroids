@@ -57,7 +57,7 @@ export default class GameEngine {
 		Space: false,
 	};
 	totalAsteroidsTarget = 0;
-	asteroidDenity = 100;
+	asteroidDenity = 40;
 	maxVisibleDistance = 0;
 
 	constructor(threeEngine: ThreeEngine) {
@@ -254,7 +254,9 @@ export default class GameEngine {
 			if ((frame + 1) % 3 === 0) {
 				// update spaceship proximity
 				this.calculateSpaceshipProximity(asteroid);
-				asteroid.checkForSpaceshipCollision(spaceship);
+				if (!spaceship.isInvincible) {
+					asteroid.checkForSpaceshipCollision(spaceship);
+				}
 			}
 			if (asteroid.getShouldRemove()) {
 				this.gameObjectsToRemove[GameObjectType.Asteroid].push(asteroid);

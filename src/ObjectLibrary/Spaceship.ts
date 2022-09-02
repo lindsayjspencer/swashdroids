@@ -10,6 +10,11 @@ const rotationalDragFactor = 0.95;
 const maxRotationSpeed = 0.04;
 const rotationalAcceleration = 0.004;
 
+// colours
+const baseColour = 0x71bd31;
+const outlineColour = 0xa6dc79;
+const invincibilityColour = 0x00ff00;
+
 export default class Spaceship extends SceneObject {
 	acceleration = 0;
 	speed = {
@@ -20,10 +25,17 @@ export default class Spaceship extends SceneObject {
 	getGameObjectsToAdd: () => GameObjectsMap;
 	bulletAvailable = true;
 	_maxVisibleDistance: number;
+	isInvincible = false;
+	bodyMaterial: THREE.MeshPhongMaterial;
 
 	constructor(options: { size: number; getGameObjectsToAdd: () => GameObjectsMap; maxVisibleDistance: number }) {
 		const { size, getGameObjectsToAdd, maxVisibleDistance } = options;
-		const material = new THREE.MeshPhongMaterial({ side: THREE.DoubleSide, color: 0x71bd31 });
+		const material = new THREE.MeshPhongMaterial({
+			side: THREE.DoubleSide,
+			color: baseColour,
+			transparent: true,
+			opacity: 1,
+		});
 
 		const shipShape = new THREE.Shape();
 		shipShape.moveTo(0, 0.5 * size);
@@ -38,7 +50,7 @@ export default class Spaceship extends SceneObject {
 		// outline
 		const outline = new THREE.EdgesGeometry(shipGeometry);
 		// thick lines
-		const outlineMaterial = new THREE.LineBasicMaterial({ color: 0xa6dc79 });
+		const outlineMaterial = new THREE.LineBasicMaterial({ color: outlineColour });
 		const outlineMesh = new THREE.LineSegments(outline, outlineMaterial);
 
 		ship.add(outlineMesh);
@@ -52,6 +64,8 @@ export default class Spaceship extends SceneObject {
 		this._disposableGeometries.push(shipGeometry, outline);
 		this._disposableMaterials.push(material, outlineMaterial);
 		this._meshes.push(ship);
+
+		this.bodyMaterial = material;
 
 		this.getGameObjectsToAdd = getGameObjectsToAdd;
 		this._maxVisibleDistance = maxVisibleDistance;
@@ -80,6 +94,13 @@ export default class Spaceship extends SceneObject {
 	};
 
 	beforeAnimate = (frame: number, keyState: GameKeyState) => {
+		if (this.isInvincible) {
+			if (frame % 5 === 0) {
+				this.bodyMaterial.opacity = this.bodyMaterial.opacity === 1 ? 0.5 : 1;
+			}
+		} else {
+			this.bodyMaterial.opacity = 1;
+		}
 		if (keyState.ArrowUp) {
 			this.modifySpeed();
 			this.applyDrag(1);
@@ -146,5 +167,12 @@ export default class Spaceship extends SceneObject {
 			this._maxVisibleDistance,
 		);
 		this.getGameObjectsToAdd()[GameObjectType.Bullet].push(bullet);
+	};
+
+	handleCollision = () => {
+		this.isInvincible = true;
+		setTimeout(() => {
+			this.isInvincible = false;
+		}, 2000);
 	};
 }
