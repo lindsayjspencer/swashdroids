@@ -1,8 +1,7 @@
 import * as THREE from 'three';
-import SceneObject from './SceneObject';
+import FadingArtifact from './FadingArtifact';
 
-export default class Particle extends SceneObject {
-	lifetime: number;
+export default class Particle extends FadingArtifact {
 	constructor(options: {
 		color: THREE.ColorRepresentation;
 		size: number;
@@ -25,9 +24,11 @@ export default class Particle extends SceneObject {
 		particle.position.x = startingPosition.x;
 		particle.position.y = startingPosition.y;
 
-		super(particle);
-
-		this.lifetime = lifetime || Math.random() * 2 + 1;
+		super({
+			mesh: particle,
+			fadableMaterials: [material],
+			lifetime,
+		});
 
 		this._disposableGeometries.push(geometry);
 		this._disposableMaterials.push(material);
@@ -39,12 +40,6 @@ export default class Particle extends SceneObject {
 	}
 
 	beforeAnimate = (frame: number) => {
-		const mesh = this._object3d as THREE.Mesh;
-		const materialProperty = mesh.material as THREE.Material | THREE.Material[];
-		const material = Array.isArray(materialProperty) ? materialProperty[0] : materialProperty;
-		material.opacity = Math.max(0, material.opacity - 0.01 / this.lifetime);
-		if (material.opacity === 0) {
-			this.setShouldRemove(true);
-		}
+		this.fade(frame);
 	};
 }

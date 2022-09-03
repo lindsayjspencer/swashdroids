@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import AsteroidFragment from './AsteroidFragment';
 import Bullet from './Bullet';
 import GameObject from './GameObject';
 import SceneObject, { PartialAnimationSpeeds } from './SceneObject';
@@ -26,6 +27,7 @@ export default class Asteroid extends GameObject {
 	radius: number;
 	size: AsteroidSize;
 	addAsteroid: (asteroid: Asteroid) => void;
+	addAsteroidFragment: (asteroidFragment: AsteroidFragment) => void;
 	addExplosion: (
 		impactAngle: number,
 		travelAngle: number,
@@ -43,6 +45,7 @@ export default class Asteroid extends GameObject {
 		},
 		maxVisibleDistance: number,
 		addAsteroid: (asteroid: Asteroid) => void,
+		addAsteroidFragment: (asteroidFragment: AsteroidFragment) => void,
 		addExplosion: (
 			impactAngle: number,
 			travelAngle: number,
@@ -105,6 +108,7 @@ export default class Asteroid extends GameObject {
 
 		this.addAsteroid = addAsteroid;
 		this.addExplosion = addExplosion;
+		this.addAsteroidFragment = addAsteroidFragment;
 	}
 
 	beforeAnimate = (frame: number) => {
@@ -121,7 +125,9 @@ export default class Asteroid extends GameObject {
 			this.setShouldRemove(true);
 			bullet.setShouldRemove(true);
 			this.collision(bullet);
+			return true;
 		}
+		return false;
 	};
 
 	checkForSpaceshipCollision = (spaceship: Spaceship) => {
@@ -130,6 +136,32 @@ export default class Asteroid extends GameObject {
 			this.collision(spaceship);
 			spaceship.handleCollision();
 		}
+	};
+
+	addRandomAsteroidFragment = (rotationAngle: number) => {
+		const zSpeed = Math.random() * 3 - 1.5;
+		this.addAsteroidFragment(
+			new AsteroidFragment({
+				color: 0x000000,
+				size: 0.05,
+				sides: 4,
+				animationSpeeds: {
+					position: {
+						x: Math.sin(rotationAngle) / 60 / Math.max(0.5, zSpeed),
+						y: Math.cos(rotationAngle) / 60 / Math.max(0.5, zSpeed),
+						z: zSpeed,
+					},
+					rotation: {
+						z: Math.random() * 0.2 - 0.1,
+					},
+				},
+				startingPosition: {
+					x: this._object3d.position.x + Math.sin(rotationAngle) / 10,
+					y: this._object3d.position.y + Math.cos(rotationAngle) / 10,
+				},
+				lifetime: Math.random() * 0.6 + 0.7,
+			}),
+		);
 	};
 
 	collision = (collidingObject: SceneObject) => {
@@ -164,9 +196,11 @@ export default class Asteroid extends GameObject {
 					},
 					maxVisibleDistance,
 					this.addAsteroid,
+					this.addAsteroidFragment,
 					this.addExplosion,
 				),
 			);
+			this.addRandomAsteroidFragment(rotationAngle + quarterTurn + Math.random());
 			rotationAngle = travelAngle - quarterTurn + Math.random() * 0.4 - 0.2;
 			this.addAsteroid(
 				new Asteroid(
@@ -184,10 +218,14 @@ export default class Asteroid extends GameObject {
 					},
 					maxVisibleDistance,
 					this.addAsteroid,
+					this.addAsteroidFragment,
 					this.addExplosion,
 				),
 			);
+			this.addRandomAsteroidFragment(rotationAngle + quarterTurn + Math.random());
 		}
+		this.addRandomAsteroidFragment(travelAngle + Math.PI / 2 + Math.random());
+		this.addRandomAsteroidFragment(travelAngle + Math.random());
 		this.setShouldRemove(true);
 	};
 }
