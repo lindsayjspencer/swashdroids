@@ -4,91 +4,82 @@ import Particle from './Particle';
 import GameObject from './GameObject';
 import { PartialAnimationSpeeds } from './SceneObject';
 import Bullet from './Bullet';
+import { ColorRepresentation } from 'three';
 
-const baseSize = 0.15;
-const baseSpeed = 0.015;
-
-const maxAcceleration = 0.001;
-const dragFactor = 0.97;
-const rotationalDragFactor = 0.95;
-const maxRotationSpeed = 0.04;
-const rotationalAcceleration = 0.004;
-
-const material = new THREE.MeshLambertMaterial({
-	color: 0x222222,
-});
-
-const outlineMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
-
-export default class CrashEnemy extends GameObject {
+export default class Enemy extends GameObject {
 	acceleration = 0;
 	speed = {
 		x: 0,
 		y: 0,
 		rotation: 0,
 	};
+	dragFactor: number;
+	maxAcceleration: number;
 	getGameObjectsToAdd: () => GameObjectsMap;
+	targetAngle: number;
+	bulletFireOffset: number;
+	bulletFirePeriod: number;
+	exhaustColour: ColorRepresentation;
+	exhaustParticlesPerSecond: number;
+	decelerateDistance: number;
 
-	constructor(
-		options: {
-			animationSpeeds?: PartialAnimationSpeeds;
-			startingPosition?: { x: number; y: number };
-			startingRotation?: number;
-			getGameObjectsToAdd: () => GameObjectsMap;
-		},
-		size: number,
-		maxVisibleDistance: number,
-	) {
-		const calculatedSize = baseSize * size;
-		const animationSpeeds = options.animationSpeeds || ({} as PartialAnimationSpeeds);
-		const startingPosition = options.startingPosition || { x: 0, y: 0 };
-		const startingRotation = options.startingRotation || 0;
-		// create enemy shape
-		const geometry = new THREE.PlaneGeometry(calculatedSize, calculatedSize);
+	constructor(options: {
+		mesh: THREE.Mesh;
+		animationSpeeds?: PartialAnimationSpeeds;
+		startingPosition?: { x: number; y: number };
+		startingRotation?: number;
+		targetAngle?: number;
+		bulletFireOffset?: number;
+		bulletFirePeriod?: number;
+		maxAcceleration?: number;
+		dragFactor?: number;
+		decelerateDistance?: number;
+		exhaustColour?: ColorRepresentation;
+		exhaustParticlesPerSecond?: number;
+		getGameObjectsToAdd: () => GameObjectsMap;
+	}) {
+		super(options.mesh);
 
-		const enemy = new THREE.Mesh(geometry, material);
+		this.targetAngle = options.targetAngle ?? Math.random() * (Math.PI / 2) - Math.PI / 4;
+		this.bulletFireOffset = options.bulletFireOffset ?? Math.floor(Math.random() * 60);
+		this.bulletFirePeriod = options.bulletFirePeriod ?? 60;
+		this.exhaustColour = options.exhaustColour ?? 0xf505ed;
+		this.exhaustParticlesPerSecond = options.exhaustParticlesPerSecond ?? 30;
 
-		enemy.position.x = startingPosition.x;
-		enemy.position.y = startingPosition.y;
-
-		enemy.rotation.z = startingRotation;
-
-		super(enemy);
-
-		this.setMaxVisibleDistance(maxVisibleDistance);
+		this.maxAcceleration = options.maxAcceleration ?? 0.001;
+		this.dragFactor = options.dragFactor ?? 0.97;
+		this.decelerateDistance = options.decelerateDistance ?? 2;
 
 		this.getGameObjectsToAdd = options.getGameObjectsToAdd;
-
-		this.setAnimationSpeeds({
-			position: animationSpeeds.position || {
-				x: Math.random() * 0.01 - 0.005,
-				y: Math.random() * 0.01 - 0.005,
-			},
-			rotation: {
-				z: animationSpeeds.rotation?.z || 0,
-			},
-		});
 	}
 
 	beforeAnimate = (frame: number) => {
+		// implement in extending classes
+	};
+
+	headTowardsSpaceship = (frame: number) => {
 		const ang = this.getAngleToSpaceship();
 		const distance = this.getDistanceToSpaceship();
 		if (ang === undefined || distance === undefined) return;
-		this._object3d.rotation.z = ang;
-		if (distance > 2) {
+		if (distance > this.decelerateDistance) {
+			this._object3d.rotation.z = ang + this.targetAngle;
 			// modify speed
-			this.speed.x += maxAcceleration * Math.cos(this._object3d.rotation.z - Math.PI);
-			this.speed.y += maxAcceleration * Math.sin(this._object3d.rotation.z - Math.PI);
+			this.speed.x += this.maxAcceleration * Math.cos(this._object3d.rotation.z - Math.PI);
+			this.speed.y += this.maxAcceleration * Math.sin(this._object3d.rotation.z - Math.PI);
 			// apply drag
-			this.speed.x *= dragFactor;
-			this.speed.y *= dragFactor;
+			this.speed.x *= this.dragFactor;
+			this.speed.y *= this.dragFactor;
 			// exhaust particles
-			if (frame % 2 === 0) {
+			if (frame % Math.floor(60 / this.exhaustParticlesPerSecond) === 0) {
 				this.addExhaustParticle();
 			}
-		}
-		if (distance < 3 && frame % 60 === 0) {
-			this.fireBullet();
+		} else {
+			this._object3d.rotation.z = ang;
+			this.speed.x *= this.dragFactor;
+			this.speed.y *= this.dragFactor;
+			if ((frame + this.bulletFireOffset) % this.bulletFirePeriod === 0) {
+				this.fireBullet();
+			}
 		}
 		this.setAnimationSpeeds({
 			position: {
