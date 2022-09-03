@@ -55,7 +55,7 @@ export default class Spaceship extends SceneObject {
 
 		ship.add(outlineMesh);
 
-		ship.position.x = 1;
+		ship.position.x = 0;
 		ship.position.y = 0;
 		ship.position.z = 0;
 
@@ -124,6 +124,7 @@ export default class Spaceship extends SceneObject {
 							(Math.random() * 0.08 - 0.04) +
 							Math.cos(randomRotationAngle) / 8,
 					},
+					lifetime: Math.random() * 1,
 				});
 				this.getGameObjectsToAdd()[GameObjectType.ExhaustParticle].push(particle);
 			}
@@ -166,7 +167,7 @@ export default class Spaceship extends SceneObject {
 			},
 			this._maxVisibleDistance,
 		);
-		this.getGameObjectsToAdd()[GameObjectType.Bullet].push(bullet);
+		this.getGameObjectsToAdd()[GameObjectType.SpaceshipBullet].push(bullet);
 	};
 
 	handleCollision = () => {
