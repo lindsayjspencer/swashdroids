@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import SceneObject from './SceneObject';
-import { GameKeyState, GameObjectsMap, GameObjectType } from 'Engines/GameEngine';
+import { GameKeyState, GameObjectsMap, GameObjectType, IAddExplosion } from 'Engines/GameEngine';
 import Particle from './Particle';
 import Bullet from './Bullet';
 
@@ -23,13 +23,19 @@ export default class Spaceship extends SceneObject {
 		rotation: 0,
 	};
 	getGameObjectsToAdd: () => GameObjectsMap;
+	addExplosion: IAddExplosion;
 	bulletAvailable = true;
 	_maxVisibleDistance: number;
 	isInvincible = false;
 	bodyMaterial: THREE.MeshPhongMaterial;
 
-	constructor(options: { size: number; getGameObjectsToAdd: () => GameObjectsMap; maxVisibleDistance: number }) {
-		const { size, getGameObjectsToAdd, maxVisibleDistance } = options;
+	constructor(options: {
+		size: number;
+		getGameObjectsToAdd: () => GameObjectsMap;
+		maxVisibleDistance: number;
+		addExplosion: IAddExplosion;
+	}) {
+		const { size, getGameObjectsToAdd, addExplosion, maxVisibleDistance } = options;
 		const material = new THREE.MeshPhongMaterial({
 			side: THREE.DoubleSide,
 			color: baseColour,
@@ -68,6 +74,7 @@ export default class Spaceship extends SceneObject {
 		this.bodyMaterial = material;
 
 		this.getGameObjectsToAdd = getGameObjectsToAdd;
+		this.addExplosion = addExplosion;
 		this._maxVisibleDistance = maxVisibleDistance;
 	}
 
@@ -168,6 +175,54 @@ export default class Spaceship extends SceneObject {
 			this._maxVisibleDistance,
 		);
 		this.getGameObjectsToAdd()[GameObjectType.SpaceshipBullet].push(bullet);
+	};
+
+	checkCollisionWithBullet = (bullet: Bullet) => {
+		if (this.isInvincible) return;
+		const distance = bullet.getDistanceToSpaceship();
+		if (distance !== undefined && distance < 0.3) {
+			const impactAngle = Math.atan2(
+				bullet._object3d.position.y - this._object3d.position.y,
+				bullet._object3d.position.x - this._object3d.position.x,
+			);
+			const travelAngle = Math.atan2(bullet._animationSpeeds.position.x, bullet._animationSpeeds.position.y);
+			this.addExplosion(
+				{
+					angle: () => impactAngle + (Math.random() * 0.5 - 0.25),
+					position: {
+						x: bullet._object3d.position.x,
+						y: bullet._object3d.position.y,
+					},
+					particles: {
+						amount: 12,
+						colour: 0xfc0303,
+					},
+				},
+				{
+					angle: () => travelAngle + (Math.random() * 0.2 - 0.1),
+					position: {
+						x: bullet._object3d.position.x,
+						y: bullet._object3d.position.y,
+					},
+					particles: {
+						amount: 8,
+						colour: 0x9c0202,
+					},
+				},
+				{
+					position: {
+						x: this._object3d.position.x,
+						y: this._object3d.position.y,
+					},
+					particles: {
+						amount: 6,
+						colour: 0x000000,
+					},
+				},
+			);
+			bullet.setShouldRemove(true);
+			this.handleCollision();
+		}
 	};
 
 	handleCollision = () => {

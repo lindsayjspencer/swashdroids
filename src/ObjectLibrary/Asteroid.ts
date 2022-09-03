@@ -1,3 +1,4 @@
+import { IAddExplosion } from 'Engines/GameEngine';
 import * as THREE from 'three';
 import AsteroidFragment from './AsteroidFragment';
 import Bullet from './Bullet';
@@ -28,12 +29,7 @@ export default class Asteroid extends GameObject {
 	size: AsteroidSize;
 	addAsteroid: (asteroid: Asteroid) => void;
 	addAsteroidFragment: (asteroidFragment: AsteroidFragment) => void;
-	addExplosion: (
-		impactAngle: number,
-		travelAngle: number,
-		impactPosition: THREE.Vector3,
-		travelPosition: THREE.Vector3,
-	) => void;
+	addExplosion: IAddExplosion;
 
 	constructor(
 		options: {
@@ -46,12 +42,7 @@ export default class Asteroid extends GameObject {
 		maxVisibleDistance: number,
 		addAsteroid: (asteroid: Asteroid) => void,
 		addAsteroidFragment: (asteroidFragment: AsteroidFragment) => void,
-		addExplosion: (
-			impactAngle: number,
-			travelAngle: number,
-			impactPosition: THREE.Vector3,
-			travelPosition: THREE.Vector3,
-		) => void,
+		addExplosion: IAddExplosion,
 	) {
 		const size = options.size || AsteroidSize.SMALL;
 		const sides = options.sides || Math.floor(Math.random() * 3) + 6;
@@ -173,7 +164,37 @@ export default class Asteroid extends GameObject {
 			collidingObject._animationSpeeds.position.x,
 			collidingObject._animationSpeeds.position.y,
 		);
-		this.addExplosion(impactAngle, travelAngle, collidingObject._object3d.position, this._object3d.position);
+		this.addExplosion(
+			{
+				angle: () => impactAngle + (Math.random() * 0.5 - 0.25),
+				position: {
+					x: collidingObject._object3d.position.x,
+					y: collidingObject._object3d.position.y,
+				},
+				particles: {
+					amount: 3,
+				},
+			},
+			{
+				angle: () => travelAngle + (Math.random() * 0.2 - 0.1),
+				position: {
+					x: collidingObject._object3d.position.x,
+					y: collidingObject._object3d.position.y,
+				},
+				particles: {
+					amount: 10,
+				},
+			},
+			{
+				position: {
+					x: this._object3d.position.x,
+					y: this._object3d.position.y,
+				},
+				particles: {
+					amount: 12,
+				},
+			},
+		);
 		if (this.size === AsteroidSize.LARGE) {
 			// split into smaller asteroids
 			const maxVisibleDistance = this.getMaxVisibleDistance();
