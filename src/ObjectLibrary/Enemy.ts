@@ -1,8 +1,8 @@
-import { GameObjectsMap, GameObjectType } from 'Engines/GameEngine';
+import { GameObjectsMap, GameObjectType, IAddExplosion } from 'Engines/GameEngine';
 import * as THREE from 'three';
 import Particle from './Particle';
 import GameObject from './GameObject';
-import { PartialAnimationSpeeds } from './SceneObject';
+import SceneObject, { PartialAnimationSpeeds } from './SceneObject';
 import Bullet from './Bullet';
 import { ColorRepresentation } from 'three';
 
@@ -16,15 +16,19 @@ export default class Enemy extends GameObject {
 	dragFactor: number;
 	maxAcceleration: number;
 	getGameObjectsToAdd: () => GameObjectsMap;
+	addExplosion: IAddExplosion;
 	targetAngle: number;
 	bulletFireOffset: number;
 	bulletFirePeriod: number;
 	exhaustColour: ColorRepresentation;
 	exhaustParticlesPerSecond: number;
 	decelerateDistance: number;
+	hitboxRadius: number;
+	health: number;
 
 	constructor(options: {
 		mesh: THREE.Mesh;
+		hitboxRadius: number;
 		animationSpeeds?: PartialAnimationSpeeds;
 		startingPosition?: { x: number; y: number };
 		startingRotation?: number;
@@ -36,7 +40,9 @@ export default class Enemy extends GameObject {
 		decelerateDistance?: number;
 		exhaustColour?: ColorRepresentation;
 		exhaustParticlesPerSecond?: number;
+		health?: number;
 		getGameObjectsToAdd: () => GameObjectsMap;
+		addExplosion: IAddExplosion;
 	}) {
 		super(options.mesh);
 
@@ -50,7 +56,11 @@ export default class Enemy extends GameObject {
 		this.dragFactor = options.dragFactor ?? 0.97;
 		this.decelerateDistance = options.decelerateDistance ?? 2;
 
+		this.hitboxRadius = options.hitboxRadius;
+		this.health = options.health ?? 1;
+
 		this.getGameObjectsToAdd = options.getGameObjectsToAdd;
+		this.addExplosion = options.addExplosion;
 	}
 
 	beforeAnimate = (frame: number) => {
@@ -99,8 +109,14 @@ export default class Enemy extends GameObject {
 				y: Math.cos(randomRotationAngle) / (Math.random() * 30 + 25),
 			},
 			startingPosition: {
-				x: this._object3d.position.x + (Math.random() * 0.08 - 0.04) + Math.sin(randomRotationAngle) / 8,
-				y: this._object3d.position.y + (Math.random() * 0.08 - 0.04) + Math.cos(randomRotationAngle) / 8,
+				x:
+					this._object3d.position.x +
+					(Math.random() * 0.08 - 0.04) +
+					Math.sin(randomRotationAngle) * this.hitboxRadius,
+				y:
+					this._object3d.position.y +
+					(Math.random() * 0.08 - 0.04) +
+					Math.cos(randomRotationAngle) * this.hitboxRadius,
 			},
 			lifetime: Math.random() * 1,
 		});
@@ -124,5 +140,58 @@ export default class Enemy extends GameObject {
 			maxVisibleDistance,
 		);
 		this.getGameObjectsToAdd()[GameObjectType.EnemyBullet].push(bullet);
+	};
+
+	checkForBulletCollision = (bullet: Bullet, distance: number) => {
+		if (distance < this.hitboxRadius) {
+			bullet.setShouldRemove(true);
+			this.bulletCollision(bullet);
+			return true;
+		}
+		return false;
+	};
+
+	bulletCollision = (bullet: Bullet) => {
+		if (this.health - bullet.damage > 0) {
+			this.health -= bullet.damage;
+		} else {
+			this.setShouldRemove(true);
+		}
+		const impactAngle = Math.atan2(
+			bullet._object3d.position.y - this._object3d.position.y,
+			bullet._object3d.position.x - this._object3d.position.x,
+		);
+		const travelAngle = Math.atan2(bullet._animationSpeeds.position.x, bullet._animationSpeeds.position.y);
+		this.addExplosion(
+			{
+				angle: () => impactAngle + (Math.random() * 0.5 - 0.25),
+				position: {
+					x: bullet._object3d.position.x,
+					y: bullet._object3d.position.y,
+				},
+				particles: {
+					amount: 3,
+				},
+			},
+			{
+				angle: () => travelAngle + (Math.random() * 0.2 - 0.1),
+				position: {
+					x: bullet._object3d.position.x,
+					y: bullet._object3d.position.y,
+				},
+				particles: {
+					amount: 10,
+				},
+			},
+			{
+				position: {
+					x: this._object3d.position.x,
+					y: this._object3d.position.y,
+				},
+				particles: {
+					amount: this.getShouldRemove() ? 18 : 0,
+				},
+			},
+		);
 	};
 }

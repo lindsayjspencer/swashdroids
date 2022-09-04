@@ -1,12 +1,19 @@
-import { GameObjectsMap } from 'Engines/GameEngine';
+import { GameObjectsMap, IAddExplosion } from 'Engines/GameEngine';
 import * as THREE from 'three';
 import Enemy from './Enemy';
 
 export default class LightEnemy extends Enemy {
-	constructor(mesh: THREE.Mesh, getGameObjectsToAdd: () => GameObjectsMap) {
+	constructor(options: {
+		mesh: THREE.Mesh;
+		getGameObjectsToAdd: () => GameObjectsMap;
+		addExplosion: IAddExplosion;
+		hitboxRadius: number;
+	}) {
 		super({
-			mesh,
-			getGameObjectsToAdd,
+			mesh: options.mesh,
+			hitboxRadius: options.hitboxRadius,
+			getGameObjectsToAdd: options.getGameObjectsToAdd,
+			addExplosion: options.addExplosion,
 			targetAngle: Math.random() * (Math.PI / 2) - Math.PI / 4,
 			bulletFireOffset: Math.floor(Math.random() * 60),
 			bulletFirePeriod: 60,

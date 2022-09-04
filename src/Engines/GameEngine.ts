@@ -8,7 +8,6 @@ import ThreeEngine from './ThreeEngine';
 import { ColorRepresentation } from 'three';
 import Enemy from 'ObjectLibrary/Enemy';
 import AsteroidFragment from 'ObjectLibrary/AsteroidFragment';
-import LightEnemy from 'ObjectLibrary/LightEnemy';
 import LightEnemyA from 'ObjectLibrary/LightEnemyA';
 
 export interface GameKeyState {
@@ -67,6 +66,7 @@ export default class GameEngine {
 	};
 	totalAsteroidsTarget = 0;
 	asteroidDenity = 20;
+	totalEnemiesTarget = 2;
 	maxVisibleDistance = 0;
 
 	constructor(threeEngine: ThreeEngine) {
@@ -114,21 +114,6 @@ export default class GameEngine {
 		this.addToScene([spaceship]);
 		this.spaceship = spaceship;
 
-		for (let i = 0; i < 4; i++) {
-			const enemy = new LightEnemyA(
-				{
-					startingPosition: {
-						x: Math.random() * 5 - 2.5,
-						y: Math.random() * 5 - 2.5,
-					},
-					getGameObjectsToAdd: () => this.gameObjectsToAdd,
-				},
-				1,
-				this.maxVisibleDistance,
-			);
-			this.gameObjectsToAdd[GameObjectType.Enemy].push(enemy);
-		}
-
 		this.threeEngine.setOnAnimate(this.onAnimate);
 
 		this.addRandomAsteroids(this.totalAsteroidsTarget, 4, this.maxVisibleDistance + 5);
@@ -173,7 +158,7 @@ export default class GameEngine {
 		[...this.gameObjects[GameObjectType.SpaceshipBullet], ...this.gameObjects[GameObjectType.EnemyBullet]].forEach(
 			(bullet) => {
 				// check asteroids for collision
-				if (frame % 3 === 0) {
+				if (frame % 2 === 0) {
 					for (const asteroid of this.gameObjects[GameObjectType.Asteroid]) {
 						const distance = this.threeEngine.calculateDistanceBetweenObjects(
 							bullet._object3d,
@@ -186,18 +171,30 @@ export default class GameEngine {
 					// update spaceship proximity
 					this.calculateSpaceshipProximity(bullet);
 				}
-				if (bullet.getShouldRemove()) {
-					this.gameObjectsToRemove[GameObjectType.SpaceshipBullet].push(bullet);
-				} else {
-					bullet.beforeAnimate(frame);
-				}
 			},
 		);
+		this.gameObjects[GameObjectType.SpaceshipBullet].forEach((bullet) => {
+			// check enemies for collision
+			if (frame % 2 === 0 && !bullet.getShouldRemove()) {
+				for (const enemy of this.gameObjects[GameObjectType.Enemy]) {
+					const distance = this.threeEngine.calculateDistanceBetweenObjects(
+						bullet._object3d,
+						enemy._object3d,
+					);
+					if (enemy.checkForBulletCollision(bullet, distance)) {
+						break;
+					}
+				}
+			}
+			if (bullet.getShouldRemove()) {
+				this.gameObjectsToRemove[GameObjectType.SpaceshipBullet].push(bullet);
+			} else {
+				bullet.beforeAnimate(frame);
+			}
+		});
 		this.gameObjects[GameObjectType.EnemyBullet].forEach((bullet) => {
 			// check spaceship for collision
-			if (frame % 2 === 0) {
-				// update spaceship proximity
-				this.calculateSpaceshipProximity(bullet);
+			if (frame % 2 === 0 && !bullet.getShouldRemove()) {
 				spaceship.checkCollisionWithBullet(bullet);
 			}
 			if (bullet.getShouldRemove()) {
@@ -263,6 +260,14 @@ export default class GameEngine {
 			);
 		}
 
+		if (this.totalEnemiesTarget > this.gameObjects[GameObjectType.Enemy].length) {
+			this.addRandomLightEnemies(
+				this.totalEnemiesTarget - this.gameObjects[GameObjectType.Enemy].length,
+				this.maxVisibleDistance + 6,
+				this.maxVisibleDistance + 3,
+			);
+		}
+
 		// run animation function on all objects
 		this.sceneObjectArray.forEach((object) => object.animate());
 
@@ -309,13 +314,13 @@ export default class GameEngine {
 			(asteroidFragment) => !asteroidFragmentsToRemove.includes(asteroidFragment),
 		);
 
-		const enemyToRemove: SceneObject[] = [];
+		const enemiesToRemove: SceneObject[] = [];
 		this.gameObjectsToRemove[GameObjectType.Enemy].forEach((enemy) => {
-			enemyToRemove.push(enemy);
+			enemiesToRemove.push(enemy);
 			objectsToRemove.push(enemy);
 		});
-		this.gameObjects[GameObjectType.Asteroid] = this.gameObjects[GameObjectType.Asteroid].filter(
-			(asteroid) => !asteroidsToRemove.includes(asteroid),
+		this.gameObjects[GameObjectType.Enemy] = this.gameObjects[GameObjectType.Enemy].filter(
+			(enemy) => !enemiesToRemove.includes(enemy),
 		);
 
 		const exhaustParticlesToRemove: SceneObject[] = [];
@@ -411,6 +416,28 @@ export default class GameEngine {
 					this.addExplosion,
 				),
 			);
+		}
+	};
+
+	addRandomLightEnemies = (amount: number, minDistance: number, maxDistance: number) => {
+		const spaceship = this.getSpaceship();
+
+		for (let i = 0; i < amount; i++) {
+			const randomAngle = Math.random() * Math.PI * 2;
+			const randomDistance = Math.random() * (maxDistance - minDistance) + minDistance;
+			const enemy = new LightEnemyA(
+				{
+					startingPosition: {
+						x: spaceship._object3d.position.x + Math.sin(randomAngle) * randomDistance,
+						y: spaceship._object3d.position.y + Math.cos(randomAngle) * randomDistance,
+					},
+					getGameObjectsToAdd: () => this.gameObjectsToAdd,
+					addExplosion: this.addExplosion,
+				},
+				1,
+				this.maxVisibleDistance,
+			);
+			this.gameObjectsToAdd[GameObjectType.Enemy].push(enemy);
 		}
 	};
 
