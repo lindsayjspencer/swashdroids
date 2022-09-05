@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import SceneObject from './SceneObject';
-import { GameKeyState, GameObjectsMap, GameObjectType } from 'Engines/GameEngine';
+import { GameKeyState } from 'Engines/GameEngine';
 import Particle from './Particle';
 import Bullet from './Bullet';
 import ExplosionEngine from 'Engines/ExplosionEngine';
+import { GameObjectsMap, GameObjectType } from 'Managers/SceneManager';
 
 const maxAcceleration = 0.001;
 const dragFactor = 0.99;

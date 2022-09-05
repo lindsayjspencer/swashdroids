@@ -1,4 +1,4 @@
-import { GameObjectsMap, GameObjectType } from 'Engines/GameEngine';
+import { GameObjectsMap, GameObjectType } from 'Managers/SceneManager';
 import * as THREE from 'three';
 import Particle from './Particle';
 import GameObject from './GameObject';
@@ -52,7 +52,7 @@ export default class Enemy extends GameObject {
 		super(mesh);
 	}
 
-	// optionally implement this furhter down the inheritance chain
+	// optionally implement this further down the inheritance chain
 	beforeAnimate = (frame: number) => {
 		this.headTowardsSpaceship(frame);
 	};

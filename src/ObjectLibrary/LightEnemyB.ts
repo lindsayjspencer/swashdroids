@@ -1,5 +1,5 @@
 import ExplosionEngine from 'Engines/ExplosionEngine';
-import { GameObjectsMap } from 'Engines/GameEngine';
+import { GameObjectsMap } from 'Managers/SceneManager';
 import * as THREE from 'three';
 import LightEnemy from './LightEnemy';
 
