@@ -41,11 +41,11 @@ export default abstract class SceneObject {
 		},
 	};
 
-	_object3d: THREE.Object3D;
+	_object3d: THREE.Mesh;
 
 	_shouldRemove = false;
 
-	constructor(object: THREE.Object3D) {
+	constructor(object: THREE.Mesh) {
 		this._object3d = object;
 	}
 

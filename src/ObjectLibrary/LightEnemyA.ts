@@ -1,5 +1,6 @@
 import ExplosionEngine from 'Engines/ExplosionEngine';
 import { GameObjectsMap } from 'Engines/GameEngine';
+import objectMeshCreator from 'Helpers/ObjectMeshCreator';
 import * as THREE from 'three';
 import LightEnemy from './LightEnemy';
 
@@ -19,18 +20,21 @@ export default class LightEnemyA extends LightEnemy {
 	}) {
 		const calculatedSize = baseSize * (options.size ?? 1);
 
-		// create enemy mesh
-		const geometry = new THREE.PlaneGeometry(calculatedSize, calculatedSize);
-		const enemy = new THREE.Mesh(geometry, material);
+		// // create enemy mesh
+		// const geometry = new THREE.PlaneGeometry(calculatedSize, calculatedSize);
+		// const enemy = new THREE.Mesh(geometry, material);
+
+		const { mesh, geometries, materials, boundingBox } = objectMeshCreator.createLightEnemyA();
 
 		// Position mesh
-		enemy.position.x = options.startingPosition.x;
-		enemy.position.y = options.startingPosition.y;
+		mesh.position.x = options.startingPosition.x;
+		mesh.position.y = options.startingPosition.y;
 
-		super(enemy);
+		super(mesh);
 
 		// Make ThreeJS objects disposable
-		this._disposableGeometries.push(geometry);
+		this._disposableGeometries.push(...geometries);
+		this._disposableMaterials.push(...materials);
 
 		// Setup internal functions that access the game engine
 		this.setMaxVisibleDistance(options.maxVisibleDistance);
@@ -39,7 +43,7 @@ export default class LightEnemyA extends LightEnemy {
 
 		// Health
 		this.health = 1;
-		this.hitboxRadius = calculatedSize * 0.8;
+		this.hitboxRadius = boundingBox.max.x;
 
 		// Behaviour ------------------------------
 		// This enemy will not fire bullets, instead it will try to run directly into the spaceship

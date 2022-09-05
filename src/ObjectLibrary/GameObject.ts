@@ -7,7 +7,7 @@ export default class GameObject extends SceneObject {
 	_maxVisibleDistance?: number;
 	_isOffscreen = false;
 
-	constructor(object: THREE.Object3D) {
+	constructor(object: THREE.Mesh) {
 		super(object);
 	}
 

@@ -250,8 +250,6 @@ export default class GameEngine {
 			);
 		}
 
-		console.log('particles', this.gameObjects[GameObjectType.FadingArtifact].length);
-
 		// run animation function on all objects
 		this.sceneObjectArray.forEach((object) => object.animate());
 
