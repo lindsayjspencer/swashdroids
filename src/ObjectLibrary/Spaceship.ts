@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import SceneObject from './SceneObject';
-import { GameKeyState, GameObjectsMap, GameObjectType, IAddExplosion } from 'Engines/GameEngine';
+import { GameKeyState, GameObjectsMap, GameObjectType } from 'Engines/GameEngine';
 import Particle from './Particle';
 import Bullet from './Bullet';
+import ExplosionEngine from 'Engines/ExplosionEngine';
 
 const maxAcceleration = 0.001;
 const dragFactor = 0.99;
@@ -13,7 +14,6 @@ const rotationalAcceleration = 0.004;
 // colours
 const baseColour = 0x71bd31;
 const outlineColour = 0xa6dc79;
-const invincibilityColour = 0x00ff00;
 
 export default class Spaceship extends SceneObject {
 	acceleration = 0;
@@ -23,20 +23,28 @@ export default class Spaceship extends SceneObject {
 		rotation: 0,
 	};
 	getGameObjectsToAdd: () => GameObjectsMap;
-	addExplosion: IAddExplosion;
 	bulletAvailable = true;
 	_maxVisibleDistance: number;
 	isInvincible = false;
 	bodyMaterial: THREE.MeshPhongMaterial;
 	damage = 1;
 
+	// Explosions
+	explosionEngine?: ExplosionEngine;
+	getExplosionEngine = () => {
+		if (!this.explosionEngine) {
+			throw new Error('Explosion engine not set');
+		}
+		return this.explosionEngine;
+	};
+
 	constructor(options: {
 		size: number;
 		getGameObjectsToAdd: () => GameObjectsMap;
 		maxVisibleDistance: number;
-		addExplosion: IAddExplosion;
+		explosionEngine: ExplosionEngine;
 	}) {
-		const { size, getGameObjectsToAdd, addExplosion, maxVisibleDistance } = options;
+		const { size, getGameObjectsToAdd, explosionEngine, maxVisibleDistance } = options;
 		const material = new THREE.MeshPhongMaterial({
 			side: THREE.DoubleSide,
 			color: baseColour,
@@ -75,7 +83,7 @@ export default class Spaceship extends SceneObject {
 		this.bodyMaterial = material;
 
 		this.getGameObjectsToAdd = getGameObjectsToAdd;
-		this.addExplosion = addExplosion;
+		this.explosionEngine = explosionEngine;
 		this._maxVisibleDistance = maxVisibleDistance;
 	}
 
@@ -187,7 +195,7 @@ export default class Spaceship extends SceneObject {
 				bullet._object3d.position.x - this._object3d.position.x,
 			);
 			const travelAngle = Math.atan2(bullet._animationSpeeds.position.x, bullet._animationSpeeds.position.y);
-			this.addExplosion(
+			this.getExplosionEngine().addExplosion(
 				{
 					angle: () => impactAngle + (Math.random() * 0.5 - 0.25),
 					position: {

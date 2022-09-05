@@ -20,4 +20,9 @@ export default class FadingArtifact extends SceneObject {
 			this.setShouldRemove(true);
 		}
 	};
+
+	// Optionally override this further down the inheritance chain
+	beforeAnimate = (frame: number) => {
+		this.fade(frame);
+	};
 }

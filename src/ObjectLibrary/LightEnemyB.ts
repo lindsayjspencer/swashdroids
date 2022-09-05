@@ -1,4 +1,5 @@
-import { GameObjectsMap, IAddExplosion } from 'Engines/GameEngine';
+import ExplosionEngine from 'Engines/ExplosionEngine';
+import { GameObjectsMap } from 'Engines/GameEngine';
 import * as THREE from 'three';
 import LightEnemy from './LightEnemy';
 
@@ -8,17 +9,15 @@ const material = new THREE.MeshLambertMaterial({
 	color: 0x656363,
 });
 
-export default class LightEnemyA extends LightEnemy {
-	constructor(
-		options: {
-			startingPosition: { x: number; y: number };
-			getGameObjectsToAdd: () => GameObjectsMap;
-			addExplosion: IAddExplosion;
-		},
-		size: number,
-		maxVisibleDistance: number,
-	) {
-		const calculatedSize = baseSize * size;
+export default class LightEnemyB extends LightEnemy {
+	constructor(options: {
+		startingPosition: { x: number; y: number };
+		getGameObjectsToAdd: () => GameObjectsMap;
+		explosionEngine: ExplosionEngine;
+		size?: number;
+		maxVisibleDistance: number;
+	}) {
+		const calculatedSize = baseSize * (options.size ?? 1);
 
 		// create enemy mesh
 		const geometry = new THREE.PlaneGeometry(calculatedSize, calculatedSize);
@@ -34,9 +33,9 @@ export default class LightEnemyA extends LightEnemy {
 		this._disposableGeometries.push(geometry);
 
 		// Setup internal functions that access the game engine
-		this.setMaxVisibleDistance(maxVisibleDistance);
+		this.setMaxVisibleDistance(options.maxVisibleDistance);
 		this.getGameObjectsToAdd = options.getGameObjectsToAdd;
-		this.addExplosion = options.addExplosion;
+		this.explosionEngine = options.explosionEngine;
 
 		// Health
 		this.health = 2;

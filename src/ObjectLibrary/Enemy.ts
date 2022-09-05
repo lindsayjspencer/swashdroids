@@ -1,12 +1,13 @@
-import { GameObjectsMap, GameObjectType, IAddExplosion } from 'Engines/GameEngine';
+import { GameObjectsMap, GameObjectType } from 'Engines/GameEngine';
 import * as THREE from 'three';
 import Particle from './Particle';
 import GameObject from './GameObject';
 import SceneObject from './SceneObject';
 import Bullet from './Bullet';
 import { ColorRepresentation } from 'three';
-import ThreeHelper from 'Helpers/ThreeHelper';
 import Spaceship from './Spaceship';
+import ExplosionEngine from 'Engines/ExplosionEngine';
+import TrigonometryHelper from 'Helpers/TrigonometryHelper';
 
 export default class Enemy extends GameObject {
 	// ----------------- //
@@ -38,6 +39,15 @@ export default class Enemy extends GameObject {
 	hitboxRadius = 1;
 	health = 1;
 
+	// Explosions
+	explosionEngine?: ExplosionEngine;
+	getExplosionEngine = () => {
+		if (!this.explosionEngine) {
+			throw new Error('Explosion engine not set');
+		}
+		return this.explosionEngine;
+	};
+
 	constructor(mesh: THREE.Mesh) {
 		super(mesh);
 	}
@@ -52,7 +62,7 @@ export default class Enemy extends GameObject {
 		const distance = this.getDistanceToSpaceship();
 		if (ang === undefined || distance === undefined) return;
 		if (distance > this.decelerateDistance) {
-			const shortestAngleBetween = ThreeHelper.getShortestAngleBetween(
+			const shortestAngleBetween = TrigonometryHelper.getShortestAngleBetween(
 				this._object3d.rotation.z,
 				ang + this.targetAngle,
 			);
@@ -68,7 +78,7 @@ export default class Enemy extends GameObject {
 				this.addExhaustParticle();
 			}
 		} else {
-			const shortestAngleBetween = ThreeHelper.getShortestAngleBetween(this._object3d.rotation.z, ang);
+			const shortestAngleBetween = TrigonometryHelper.getShortestAngleBetween(this._object3d.rotation.z, ang);
 			this.speed.rotation = shortestAngleBetween / 10;
 			this.speed.x *= this.dragFactor;
 			this.speed.y *= this.dragFactor;
@@ -153,7 +163,7 @@ export default class Enemy extends GameObject {
 			collidingObject._animationSpeeds.position.x,
 			collidingObject._animationSpeeds.position.y,
 		);
-		this.addExplosion(
+		this.getExplosionEngine().addExplosion(
 			{
 				angle: () => impactAngle + (Math.random() * 0.5 - 0.25),
 				position: {
@@ -202,9 +212,5 @@ export default class Enemy extends GameObject {
 	// Must implement these methods further up the inheritance chain
 	getGameObjectsToAdd: () => GameObjectsMap = () => {
 		throw new Error('getGameObjectsToAdd not implemented');
-	};
-
-	addExplosion: IAddExplosion = () => {
-		throw new Error('addExplosion not implemented');
 	};
 }

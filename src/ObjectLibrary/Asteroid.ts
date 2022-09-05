@@ -1,4 +1,4 @@
-import { IAddExplosion } from 'Engines/GameEngine';
+import ExplosionEngine from 'Engines/ExplosionEngine';
 import * as THREE from 'three';
 import AsteroidFragment from './AsteroidFragment';
 import Bullet from './Bullet';
@@ -27,23 +27,29 @@ const AsteroidSizeMap = {
 export default class Asteroid extends GameObject {
 	radius: number;
 	size: AsteroidSize;
-	addAsteroid: (asteroid: Asteroid) => void;
-	addAsteroidFragment: (asteroidFragment: AsteroidFragment) => void;
-	addExplosion: IAddExplosion;
+	addAsteroids: (asteroid: Asteroid) => void;
+	addAsteroidFragments: (asteroidFragment: AsteroidFragment) => void;
 
-	constructor(
-		options: {
-			size?: AsteroidSize;
-			sides?: number;
-			animationSpeeds?: PartialAnimationSpeeds;
-			startingPosition?: { x: number; y: number };
-			startingRotation?: number;
-		},
-		maxVisibleDistance: number,
-		addAsteroid: (asteroid: Asteroid) => void,
-		addAsteroidFragment: (asteroidFragment: AsteroidFragment) => void,
-		addExplosion: IAddExplosion,
-	) {
+	// Explosions
+	explosionEngine?: ExplosionEngine;
+	getExplosionEngine = () => {
+		if (!this.explosionEngine) {
+			throw new Error('Explosion engine not set');
+		}
+		return this.explosionEngine;
+	};
+
+	constructor(options: {
+		size?: AsteroidSize;
+		sides?: number;
+		animationSpeeds?: PartialAnimationSpeeds;
+		startingPosition?: { x: number; y: number };
+		startingRotation?: number;
+		maxVisibleDistance: number;
+		addAsteroids: (...asteroids: Asteroid[]) => void;
+		addAsteroidFragments: (...asteroidFragments: AsteroidFragment[]) => void;
+		explosionEngine: ExplosionEngine;
+	}) {
 		const size = options.size || AsteroidSize.SMALL;
 		const sides = options.sides || Math.floor(Math.random() * 3) + 6;
 		const animationSpeeds = options.animationSpeeds || ({} as PartialAnimationSpeeds);
@@ -85,7 +91,7 @@ export default class Asteroid extends GameObject {
 		this._disposableGeometries.push(geometry, outline);
 		this._meshes.push(asteroid);
 
-		this.setMaxVisibleDistance(maxVisibleDistance);
+		this.setMaxVisibleDistance(options.maxVisibleDistance);
 
 		this.setAnimationSpeeds({
 			position: animationSpeeds.position || {
@@ -97,9 +103,9 @@ export default class Asteroid extends GameObject {
 			},
 		});
 
-		this.addAsteroid = addAsteroid;
-		this.addExplosion = addExplosion;
-		this.addAsteroidFragment = addAsteroidFragment;
+		this.addAsteroids = options.addAsteroids;
+		this.addAsteroidFragments = options.addAsteroidFragments;
+		this.explosionEngine = options.explosionEngine;
 	}
 
 	beforeAnimate = (frame: number) => {
@@ -131,7 +137,7 @@ export default class Asteroid extends GameObject {
 
 	addRandomAsteroidFragment = (rotationAngle: number) => {
 		const zSpeed = Math.random() * 3 - 1.5;
-		this.addAsteroidFragment(
+		this.addAsteroidFragments(
 			new AsteroidFragment({
 				color: 0x000000,
 				size: 0.05,
@@ -164,7 +170,7 @@ export default class Asteroid extends GameObject {
 			collidingObject._animationSpeeds.position.x,
 			collidingObject._animationSpeeds.position.y,
 		);
-		this.addExplosion(
+		this.getExplosionEngine().addExplosion(
 			{
 				angle: () => impactAngle + (Math.random() * 0.5 - 0.25),
 				position: {
@@ -201,47 +207,43 @@ export default class Asteroid extends GameObject {
 			if (maxVisibleDistance === undefined) return;
 			const quarterTurn = Math.PI / 4;
 			let rotationAngle = travelAngle + quarterTurn + Math.random() * 0.4 - 0.2;
-			this.addAsteroid(
-				new Asteroid(
-					{
-						animationSpeeds: {
-							position: {
-								x: Math.sin(rotationAngle) / 60,
-								y: Math.cos(rotationAngle) / 60,
-							},
-						},
-						startingPosition: {
-							x: this._object3d.position.x + Math.sin(rotationAngle) / 10,
-							y: this._object3d.position.y + Math.cos(rotationAngle) / 10,
+			this.addAsteroids(
+				new Asteroid({
+					animationSpeeds: {
+						position: {
+							x: Math.sin(rotationAngle) / 60,
+							y: Math.cos(rotationAngle) / 60,
 						},
 					},
-					maxVisibleDistance,
-					this.addAsteroid,
-					this.addAsteroidFragment,
-					this.addExplosion,
-				),
+					startingPosition: {
+						x: this._object3d.position.x + Math.sin(rotationAngle) / 10,
+						y: this._object3d.position.y + Math.cos(rotationAngle) / 10,
+					},
+					maxVisibleDistance: maxVisibleDistance,
+					addAsteroids: this.addAsteroids,
+					addAsteroidFragments: this.addAsteroidFragments,
+					explosionEngine: this.getExplosionEngine(),
+				}),
 			);
 			this.addRandomAsteroidFragment(rotationAngle + quarterTurn + Math.random());
 			rotationAngle = travelAngle - quarterTurn + Math.random() * 0.4 - 0.2;
-			this.addAsteroid(
-				new Asteroid(
-					{
-						animationSpeeds: {
-							position: {
-								x: Math.sin(rotationAngle) / 60,
-								y: Math.cos(rotationAngle) / 60,
-							},
-						},
-						startingPosition: {
-							x: this._object3d.position.x + Math.sin(rotationAngle) / 10,
-							y: this._object3d.position.y + Math.cos(rotationAngle) / 10,
+			this.addAsteroids(
+				new Asteroid({
+					animationSpeeds: {
+						position: {
+							x: Math.sin(rotationAngle) / 60,
+							y: Math.cos(rotationAngle) / 60,
 						},
 					},
-					maxVisibleDistance,
-					this.addAsteroid,
-					this.addAsteroidFragment,
-					this.addExplosion,
-				),
+					startingPosition: {
+						x: this._object3d.position.x + Math.sin(rotationAngle) / 10,
+						y: this._object3d.position.y + Math.cos(rotationAngle) / 10,
+					},
+					maxVisibleDistance: maxVisibleDistance,
+					addAsteroids: this.addAsteroids,
+					addAsteroidFragments: this.addAsteroidFragments,
+					explosionEngine: this.getExplosionEngine(),
+				}),
 			);
 			this.addRandomAsteroidFragment(rotationAngle + quarterTurn + Math.random());
 		}

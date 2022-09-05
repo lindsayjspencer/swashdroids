@@ -38,8 +38,4 @@ export default class Particle extends FadingArtifact {
 			position: speed,
 		});
 	}
-
-	beforeAnimate = (frame: number) => {
-		this.fade(frame);
-	};
 }

@@ -72,8 +72,4 @@ export default class AsteroidFragment extends FadingArtifact {
 			},
 		});
 	}
-
-	beforeAnimate = (frame: number) => {
-		this.fade(frame);
-	};
 }

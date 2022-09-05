@@ -2,14 +2,14 @@ import Asteroid, { AsteroidSize } from 'ObjectLibrary/Asteroid';
 import Bullet from 'ObjectLibrary/Bullet';
 import SceneObject from 'ObjectLibrary/SceneObject';
 import GameObject from 'ObjectLibrary/GameObject';
-import Particle from 'ObjectLibrary/Particle';
 import Spaceship from 'ObjectLibrary/Spaceship';
 import ThreeEngine from './ThreeEngine';
-import { ColorRepresentation } from 'three';
 import Enemy from 'ObjectLibrary/Enemy';
 import AsteroidFragment from 'ObjectLibrary/AsteroidFragment';
 import LightEnemyA from 'ObjectLibrary/LightEnemyA';
 import LightEnemyB from 'ObjectLibrary/LightEnemyB';
+import FadingArtifact from 'ObjectLibrary/FadingArtifact';
+import ExplosionEngine from './ExplosionEngine';
 
 export interface GameKeyState {
 	ArrowUp: boolean;
@@ -29,7 +29,7 @@ export enum GameObjectType {
 
 export interface GameObjectsMap {
 	[GameObjectType.Asteroid]: Asteroid[];
-	[GameObjectType.FadingArtifact]: AsteroidFragment[];
+	[GameObjectType.FadingArtifact]: FadingArtifact[];
 	[GameObjectType.Enemy]: Enemy[];
 	[GameObjectType.SpaceshipBullet]: Bullet[];
 	[GameObjectType.EnemyBullet]: Bullet[];
@@ -45,13 +45,18 @@ const createBlankGameObjectMap = () =>
 	} as GameObjectsMap);
 
 export default class GameEngine {
+	// 3D objects
 	sceneObjectArray: SceneObject[] = [];
 	spaceship?: Spaceship;
 	gameObjects = createBlankGameObjectMap();
 	gameObjectsToAdd = createBlankGameObjectMap();
 	gameObjectsToRemove = createBlankGameObjectMap();
-	bulletAvailable = true;
+
+	// Three JS related
 	threeEngine: ThreeEngine;
+	maxVisibleDistance = 0;
+
+	// Controls
 	keyState: GameKeyState = {
 		ArrowUp: false,
 		ArrowDown: false,
@@ -59,30 +64,33 @@ export default class GameEngine {
 		ArrowRight: false,
 		Space: false,
 	};
+
+	// Asteroids
 	totalAsteroidsTarget = 0;
 	asteroidDenity = 20;
+
+	// Enemies
 	totalEnemiesTarget = 3;
-	maxVisibleDistance = 0;
+
+	// Other engines
+	explosionEngine: ExplosionEngine;
 
 	constructor(threeEngine: ThreeEngine) {
 		this.threeEngine = threeEngine;
 		this.recalculateVisibleDistance();
+		this.explosionEngine = new ExplosionEngine(this.addFadingArtifacts);
 	}
 
 	setMaxVisibleDistance = (distance: number) => {
 		this.maxVisibleDistance = distance;
 		this.totalAsteroidsTarget = Math.floor(this.asteroidDenity * distance);
 		this.spaceship?.setMaxVisibleDistance(distance);
-		this.gameObjects[GameObjectType.SpaceshipBullet].forEach((bullet) => {
-			bullet.setMaxVisibleDistance(distance);
-		});
-		this.gameObjects[GameObjectType.EnemyBullet].forEach((bullet) => {
-			bullet.setMaxVisibleDistance(distance);
-		});
-		this.gameObjects[GameObjectType.Asteroid].forEach((asteroid) => {
-			asteroid.setMaxVisibleDistance(distance);
-		});
-		this.gameObjects[GameObjectType.Enemy].forEach((enemy) => {
+		[
+			...this.gameObjects[GameObjectType.SpaceshipBullet],
+			...this.gameObjects[GameObjectType.EnemyBullet],
+			...this.gameObjects[GameObjectType.Asteroid],
+			...this.gameObjects[GameObjectType.Enemy],
+		].forEach((enemy) => {
 			enemy.setMaxVisibleDistance(distance);
 		});
 	};
@@ -102,12 +110,12 @@ export default class GameEngine {
 		const spaceship = new Spaceship({
 			size: spaceshipSize,
 			getGameObjectsToAdd: () => this.gameObjectsToAdd,
-			addExplosion: this.addExplosion,
+			explosionEngine: this.explosionEngine,
 			maxVisibleDistance: this.maxVisibleDistance,
 		});
 
-		this.addToScene([spaceship]);
 		this.spaceship = spaceship;
+		this.addToScene([spaceship]);
 
 		this.threeEngine.setOnAnimate(this.onAnimate);
 
@@ -312,8 +320,12 @@ export default class GameEngine {
 		this.gameObjectsToAdd[GameObjectType.FadingArtifact].push(asteroidFragment);
 	};
 
-	addAsteroid = (asteroid: Asteroid) => {
-		this.gameObjectsToAdd[GameObjectType.Asteroid].push(asteroid);
+	addAsteroids = (...asteroids: Asteroid[]) => {
+		this.gameObjectsToAdd[GameObjectType.Asteroid].push(...asteroids);
+	};
+
+	addFadingArtifacts = (...artifacts: FadingArtifact[]) => {
+		this.gameObjectsToAdd[GameObjectType.FadingArtifact].push(...artifacts);
 	};
 
 	addRandomAsteroids = (amount: number, minDistance: number, maxDistance: number) => {
@@ -323,20 +335,18 @@ export default class GameEngine {
 			const randomAngle = Math.random() * Math.PI * 2;
 			const randomDistance = Math.random() * (maxDistance - minDistance) + minDistance;
 			const randomAsteroidSize = Math.random() > 0.5 ? AsteroidSize.LARGE : AsteroidSize.SMALL;
-			this.addAsteroid(
-				new Asteroid(
-					{
-						size: randomAsteroidSize,
-						startingPosition: {
-							x: spaceship._object3d.position.x + Math.sin(randomAngle) * randomDistance,
-							y: spaceship._object3d.position.y + Math.cos(randomAngle) * randomDistance,
-						},
+			this.addAsteroids(
+				new Asteroid({
+					size: randomAsteroidSize,
+					startingPosition: {
+						x: spaceship._object3d.position.x + Math.sin(randomAngle) * randomDistance,
+						y: spaceship._object3d.position.y + Math.cos(randomAngle) * randomDistance,
 					},
-					this.maxVisibleDistance,
-					this.addAsteroid,
-					this.addAsteroidFragment,
-					this.addExplosion,
-				),
+					maxVisibleDistance: this.maxVisibleDistance,
+					addAsteroids: this.addAsteroids,
+					addAsteroidFragments: this.addAsteroidFragment,
+					explosionEngine: this.explosionEngine,
+				}),
 			);
 		}
 	};
@@ -347,32 +357,16 @@ export default class GameEngine {
 		for (let i = 0; i < amount; i++) {
 			const randomAngle = Math.random() * Math.PI * 2;
 			const randomDistance = Math.random() * (maxDistance - minDistance) + minDistance;
-			const enemy =
-				Math.random() > 0.5
-					? new LightEnemyA(
-							{
-								startingPosition: {
-									x: spaceship._object3d.position.x + Math.sin(randomAngle) * randomDistance,
-									y: spaceship._object3d.position.y + Math.cos(randomAngle) * randomDistance,
-								},
-								getGameObjectsToAdd: () => this.gameObjectsToAdd,
-								addExplosion: this.addExplosion,
-							},
-							1,
-							this.maxVisibleDistance,
-					  )
-					: new LightEnemyB(
-							{
-								startingPosition: {
-									x: spaceship._object3d.position.x + Math.sin(randomAngle) * randomDistance,
-									y: spaceship._object3d.position.y + Math.cos(randomAngle) * randomDistance,
-								},
-								getGameObjectsToAdd: () => this.gameObjectsToAdd,
-								addExplosion: this.addExplosion,
-							},
-							1,
-							this.maxVisibleDistance,
-					  );
+			const EnemyClass = Math.random() > 0.5 ? LightEnemyA : LightEnemyB;
+			const enemy = new EnemyClass({
+				startingPosition: {
+					x: spaceship._object3d.position.x + Math.sin(randomAngle) * randomDistance,
+					y: spaceship._object3d.position.y + Math.cos(randomAngle) * randomDistance,
+				},
+				getGameObjectsToAdd: () => this.gameObjectsToAdd,
+				explosionEngine: this.explosionEngine,
+				maxVisibleDistance: this.maxVisibleDistance,
+			});
 			this.gameObjectsToAdd[GameObjectType.Enemy].push(enemy);
 		}
 	};
@@ -436,153 +430,4 @@ export default class GameEngine {
 				break;
 		}
 	};
-
-	particleExplosion = (options: {
-		amount: NumberOrFunction;
-		colour: ColorRepresentation;
-		size: NumberOrFunction;
-		xySpeed: NumberOrFunction;
-		zSpeed: NumberOrFunction;
-		minZSpeed: NumberOrFunction;
-		position: Required<ParticleExplosionPosition>;
-		lifetime: NumberOrFunction;
-		opacity: NumberOrFunction;
-		angle: NumberOrFunction;
-	}) => {
-		const { amount, colour, size, xySpeed, zSpeed, minZSpeed, position, lifetime, opacity, angle } = options;
-		const particlesToAdd: Particle[] = [];
-		for (let i = 0; i < amount; i++) {
-			const _xySpeed = returnNumber(xySpeed);
-			const _zSpeed = returnNumber(zSpeed);
-			const _minZSpeed = returnNumber(minZSpeed);
-			const xOffset = returnNumber(position.xOffset);
-			const yOffset = returnNumber(position.yOffset);
-			const spread = returnNumber(position.spread);
-			const _angle = returnNumber(angle);
-			const xSpeed = (Math.sin(_angle) * _xySpeed) / Math.max(_minZSpeed, _zSpeed);
-			const ySpeed = (Math.cos(_angle) * _xySpeed) / Math.max(_minZSpeed, _zSpeed);
-			const particle = new Particle({
-				color: colour,
-				size: returnNumber(size),
-				speed: {
-					x: xSpeed,
-					y: ySpeed,
-					z: _zSpeed,
-				},
-				startingPosition: {
-					x: returnNumber(position.x) + xOffset + spread * xSpeed,
-					y: returnNumber(position.y) + yOffset + spread * ySpeed,
-				},
-				opacity: returnNumber(opacity),
-				lifetime: returnNumber(lifetime),
-			});
-			particlesToAdd.push(particle);
-		}
-		return particlesToAdd;
-	};
-
-	addExplosion: IAddExplosion = (impact, blowback, explosion) => {
-		// Impact particles
-		const impactParticles = this.particleExplosion({
-			amount: impact.particles?.amount ?? 3,
-			colour: impact.particles?.colour ?? 0xf5aa42,
-			size: impact.particles?.size ?? 0.03,
-			xySpeed: impact.particles?.xySpeed ?? (() => Math.random() * 0.07 + 0.02),
-			zSpeed: impact.particles?.zSpeed ?? (() => Math.random() * 1.5 - 0.75),
-			minZSpeed: impact.particles?.minZSpeed ?? 1,
-			lifetime: impact.particles?.lifetime ?? (() => Math.random() * 0.5 + 0.2),
-			opacity: impact.particles?.opacity ?? (() => Math.random()),
-			position: {
-				x: impact.position.x,
-				y: impact.position.y,
-				xOffset: impact.position.xOffset ?? (() => Math.random() * 0.08 - 0.04),
-				yOffset: impact.position.yOffset ?? (() => Math.random() * 0.08 - 0.04),
-				spread: impact.particles?.spread ?? Math.random() * 0.08 - 0.04,
-			},
-			angle: impact.angle ?? (() => Math.random() * Math.PI * 2),
-		});
-		this.gameObjectsToAdd[GameObjectType.FadingArtifact].push(...impactParticles);
-		// Blowback particles
-		const blowbackParticles = this.particleExplosion({
-			amount: blowback.particles?.amount ?? 12,
-			colour: blowback.particles?.colour ?? 0xf5aa42,
-			size: blowback.particles?.size ?? 0.03,
-			xySpeed: blowback.particles?.xySpeed ?? (() => Math.random() * 0.04 + 0.02),
-			zSpeed: blowback.particles?.zSpeed ?? (() => Math.random() * 1.5 - 0.75),
-			minZSpeed: blowback.particles?.minZSpeed ?? 1,
-			lifetime: blowback.particles?.lifetime ?? (() => Math.random() * 0.5),
-			opacity: blowback.particles?.opacity ?? (() => Math.random()),
-			position: {
-				x: blowback.position.x,
-				y: blowback.position.y,
-				xOffset: blowback.position.xOffset ?? (() => Math.random() * 0.08 - 0.04),
-				yOffset: blowback.position.yOffset ?? (() => Math.random() * 0.08 - 0.04),
-				spread: blowback.particles?.spread ?? Math.random() * 0.08 - 0.04,
-			},
-			angle: blowback.angle ?? (() => Math.random() * Math.PI * 2),
-		});
-		this.gameObjectsToAdd[GameObjectType.FadingArtifact].push(...blowbackParticles);
-		// Explosion particles
-		const explosionParticles = this.particleExplosion({
-			amount: explosion.particles?.amount ?? 12,
-			colour: explosion.particles?.colour ?? 0x000000,
-			size: explosion.particles?.size ?? 0.02,
-			xySpeed: explosion.particles?.xySpeed ?? (() => Math.random() * 0.01 + 0.01),
-			zSpeed: explosion.particles?.zSpeed ?? (() => Math.random() * 1.5),
-			minZSpeed: explosion.particles?.minZSpeed ?? 0.5,
-			lifetime: explosion.particles?.lifetime ?? (() => Math.random() * 0.5),
-			opacity: explosion.particles?.opacity ?? (() => Math.random()),
-			position: {
-				x: explosion.position.x,
-				y: explosion.position.y,
-				xOffset: explosion.position.xOffset ?? (() => Math.random() * 0.08 - 0.04),
-				yOffset: explosion.position.yOffset ?? (() => Math.random() * 0.08 - 0.04),
-				spread: explosion.particles?.spread ?? (() => Math.random() * 0.03 + 0.03),
-			},
-			angle: explosion.angle ?? (() => Math.random() * Math.PI * 2),
-		});
-		this.gameObjectsToAdd[GameObjectType.FadingArtifact].push(...explosionParticles);
-	};
 }
-
-export type IAddExplosion = (
-	impact: IParticleExplosion,
-	blowback: IParticleExplosion,
-	explosion: IParticleExplosion,
-) => void;
-
-export type IParticleExplosion = {
-	angle?: NumberOrFunction;
-	position: ParticleExplosionPosition;
-	particles?: ParticleExplosionOptions;
-};
-
-export type ParticleExplosionPosition = {
-	x: NumberOrFunction;
-	y: NumberOrFunction;
-	xOffset?: NumberOrFunction;
-	yOffset?: NumberOrFunction;
-	spread?: NumberOrFunction;
-};
-
-export type ParticleExplosionOptions = {
-	colour?: ColorRepresentation;
-	amount?: NumberOrFunction;
-	size?: NumberOrFunction;
-	opacity?: NumberOrFunction;
-	lifetime?: NumberOrFunction;
-	xySpeed?: NumberOrFunction;
-	zSpeed?: NumberOrFunction;
-	minZSpeed?: NumberOrFunction;
-	offset?: NumberOrFunction;
-	spread?: NumberOrFunction;
-};
-
-export type NumberOrFunction = number | (() => number);
-
-export const returnNumber = (value: NumberOrFunction) => {
-	if (typeof value === 'number') {
-		return value;
-	}
-	return value();
-};
