@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import GameEngine from 'Engines/GameEngine';
 import ThreeEngine from 'Engines/ThreeEngine';
+import threeHelper from 'Helpers/ThreeHelper';
 
 const calculateCanvasSize = () => {
 	const width = window.innerWidth;
@@ -59,6 +60,15 @@ function App() {
 		};
 		window.addEventListener('keydown', keyDown);
 		window.addEventListener('keyup', keyUp);
+
+		threeHelper.getShortestAngleBetween(3.0, 2.0);
+		console.log('shortest angle between 3.0 and 2.0 is', threeHelper.getShortestAngleBetween(3.0, 2.0));
+
+		threeHelper.getShortestAngleBetween(3.0, -2.0);
+		console.log('shortest angle between 3.0 and -2.0 is', threeHelper.getShortestAngleBetween(3.0, -2.0));
+
+		threeHelper.getShortestAngleBetween(-2.0, 0.1);
+		console.log('shortest angle between -2.0 and 0.1 is', threeHelper.getShortestAngleBetween(-2.0, 0.1));
 		return () => {
 			window.removeEventListener('keydown', keyDown);
 			window.removeEventListener('keyup', keyUp);

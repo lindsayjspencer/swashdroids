@@ -28,6 +28,7 @@ export default class Spaceship extends SceneObject {
 	_maxVisibleDistance: number;
 	isInvincible = false;
 	bodyMaterial: THREE.MeshPhongMaterial;
+	damage = 1;
 
 	constructor(options: {
 		size: number;
@@ -133,7 +134,7 @@ export default class Spaceship extends SceneObject {
 					},
 					lifetime: Math.random() * 1,
 				});
-				this.getGameObjectsToAdd()[GameObjectType.ExhaustParticle].push(particle);
+				this.getGameObjectsToAdd()[GameObjectType.FadingArtifact].push(particle);
 			}
 		}
 		if (keyState.ArrowLeft) {

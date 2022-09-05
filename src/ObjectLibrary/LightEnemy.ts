@@ -8,6 +8,7 @@ export default class LightEnemy extends Enemy {
 		getGameObjectsToAdd: () => GameObjectsMap;
 		addExplosion: IAddExplosion;
 		hitboxRadius: number;
+		firesBullets: boolean;
 	}) {
 		super({
 			mesh: options.mesh,
@@ -16,7 +17,7 @@ export default class LightEnemy extends Enemy {
 			addExplosion: options.addExplosion,
 			targetAngle: Math.random() * (Math.PI / 2) - Math.PI / 4,
 			bulletFireOffset: Math.floor(Math.random() * 60),
-			bulletFirePeriod: 60,
+			bulletFirePeriod: options.firesBullets ? 60 : undefined,
 			exhaustColour: 0xf505ed,
 			exhaustParticlesPerSecond: 30,
 			maxAcceleration: 0.001,

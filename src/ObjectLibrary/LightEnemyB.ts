@@ -2,10 +2,10 @@ import { GameObjectsMap, IAddExplosion } from 'Engines/GameEngine';
 import * as THREE from 'three';
 import LightEnemy from './LightEnemy';
 
-const baseSize = 0.3;
+const baseSize = 0.25;
 
 const material = new THREE.MeshLambertMaterial({
-	color: 0x858383,
+	color: 0x656363,
 });
 
 export default class LightEnemyA extends LightEnemy {
@@ -33,14 +33,11 @@ export default class LightEnemyA extends LightEnemy {
 			getGameObjectsToAdd: options.getGameObjectsToAdd,
 			hitboxRadius: calculatedSize * 0.8,
 			addExplosion: options.addExplosion,
-			firesBullets: false,
+			firesBullets: true,
 		});
-
-		this.decelerateDistance = 0;
-		this.targetAngle = 0;
 
 		this.setMaxVisibleDistance(maxVisibleDistance);
 
-		this.health = 1;
+		this.health = 2;
 	}
 }

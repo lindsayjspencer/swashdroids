@@ -5,6 +5,8 @@ import GameObject from './GameObject';
 import SceneObject, { PartialAnimationSpeeds } from './SceneObject';
 import Bullet from './Bullet';
 import { ColorRepresentation } from 'three';
+import ThreeHelper from 'Helpers/ThreeHelper';
+import Spaceship from './Spaceship';
 
 export default class Enemy extends GameObject {
 	acceleration = 0;
@@ -19,7 +21,7 @@ export default class Enemy extends GameObject {
 	addExplosion: IAddExplosion;
 	targetAngle: number;
 	bulletFireOffset: number;
-	bulletFirePeriod: number;
+	bulletFirePeriod?: number;
 	exhaustColour: ColorRepresentation;
 	exhaustParticlesPerSecond: number;
 	decelerateDistance: number;
@@ -46,9 +48,9 @@ export default class Enemy extends GameObject {
 	}) {
 		super(options.mesh);
 
-		this.targetAngle = options.targetAngle ?? Math.random() * (Math.PI / 2) - Math.PI / 4;
+		this.targetAngle = options.targetAngle ?? Math.random() * (Math.PI / 4) - Math.PI / 8;
 		this.bulletFireOffset = options.bulletFireOffset ?? Math.floor(Math.random() * 60);
-		this.bulletFirePeriod = options.bulletFirePeriod ?? 60;
+		this.bulletFirePeriod = options.bulletFirePeriod;
 		this.exhaustColour = options.exhaustColour ?? 0xf505ed;
 		this.exhaustParticlesPerSecond = options.exhaustParticlesPerSecond ?? 30;
 
@@ -72,7 +74,11 @@ export default class Enemy extends GameObject {
 		const distance = this.getDistanceToSpaceship();
 		if (ang === undefined || distance === undefined) return;
 		if (distance > this.decelerateDistance) {
-			this._object3d.rotation.z = ang + this.targetAngle;
+			const shortestAngleBetween = ThreeHelper.getShortestAngleBetween(
+				this._object3d.rotation.z,
+				ang + this.targetAngle,
+			);
+			this.speed.rotation = shortestAngleBetween / 10;
 			// modify speed
 			this.speed.x += this.maxAcceleration * Math.cos(this._object3d.rotation.z - Math.PI);
 			this.speed.y += this.maxAcceleration * Math.sin(this._object3d.rotation.z - Math.PI);
@@ -84,10 +90,11 @@ export default class Enemy extends GameObject {
 				this.addExhaustParticle();
 			}
 		} else {
-			this._object3d.rotation.z = ang;
+			const shortestAngleBetween = ThreeHelper.getShortestAngleBetween(this._object3d.rotation.z, ang);
+			this.speed.rotation = shortestAngleBetween / 10;
 			this.speed.x *= this.dragFactor;
 			this.speed.y *= this.dragFactor;
-			if ((frame + this.bulletFireOffset) % this.bulletFirePeriod === 0) {
+			if (this.bulletFirePeriod !== undefined && (frame + this.bulletFireOffset) % this.bulletFirePeriod === 0) {
 				this.fireBullet();
 			}
 		}
@@ -95,6 +102,9 @@ export default class Enemy extends GameObject {
 			position: {
 				x: this.speed.x,
 				y: this.speed.y,
+			},
+			rotation: {
+				z: this.speed.rotation,
 			},
 		});
 	};
@@ -120,7 +130,7 @@ export default class Enemy extends GameObject {
 			},
 			lifetime: Math.random() * 1,
 		});
-		this.getGameObjectsToAdd()[GameObjectType.ExhaustParticle].push(particle);
+		this.getGameObjectsToAdd()[GameObjectType.FadingArtifact].push(particle);
 	};
 
 	fireBullet = () => {
@@ -145,29 +155,32 @@ export default class Enemy extends GameObject {
 	checkForBulletCollision = (bullet: Bullet, distance: number) => {
 		if (distance < this.hitboxRadius) {
 			bullet.setShouldRemove(true);
-			this.bulletCollision(bullet);
+			if (this.health - bullet.damage > 0) {
+				this.health -= bullet.damage;
+			} else {
+				this.setShouldRemove(true);
+			}
+			this.collision(bullet);
 			return true;
 		}
 		return false;
 	};
 
-	bulletCollision = (bullet: Bullet) => {
-		if (this.health - bullet.damage > 0) {
-			this.health -= bullet.damage;
-		} else {
-			this.setShouldRemove(true);
-		}
+	collision = (collidingObject: SceneObject) => {
 		const impactAngle = Math.atan2(
-			bullet._object3d.position.y - this._object3d.position.y,
-			bullet._object3d.position.x - this._object3d.position.x,
+			collidingObject._object3d.position.y - this._object3d.position.y,
+			collidingObject._object3d.position.x - this._object3d.position.x,
 		);
-		const travelAngle = Math.atan2(bullet._animationSpeeds.position.x, bullet._animationSpeeds.position.y);
+		const travelAngle = Math.atan2(
+			collidingObject._animationSpeeds.position.x,
+			collidingObject._animationSpeeds.position.y,
+		);
 		this.addExplosion(
 			{
 				angle: () => impactAngle + (Math.random() * 0.5 - 0.25),
 				position: {
-					x: bullet._object3d.position.x,
-					y: bullet._object3d.position.y,
+					x: collidingObject._object3d.position.x,
+					y: collidingObject._object3d.position.y,
 				},
 				particles: {
 					amount: 3,
@@ -176,8 +189,8 @@ export default class Enemy extends GameObject {
 			{
 				angle: () => travelAngle + (Math.random() * 0.2 - 0.1),
 				position: {
-					x: bullet._object3d.position.x,
-					y: bullet._object3d.position.y,
+					x: collidingObject._object3d.position.x,
+					y: collidingObject._object3d.position.y,
 				},
 				particles: {
 					amount: 10,
@@ -193,5 +206,18 @@ export default class Enemy extends GameObject {
 				},
 			},
 		);
+	};
+
+	checkForSpaceshipCollision = (spaceship: Spaceship) => {
+		const distanceToSpaceship = this.getDistanceToSpaceship();
+		if (distanceToSpaceship !== undefined && distanceToSpaceship < this.hitboxRadius) {
+			if (this.health - spaceship.damage > 0) {
+				this.health -= spaceship.damage;
+			} else {
+				this.setShouldRemove(true);
+			}
+			this.collision(spaceship);
+			spaceship.handleCollision();
+		}
 	};
 }
