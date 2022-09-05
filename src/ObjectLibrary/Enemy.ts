@@ -2,71 +2,49 @@ import { GameObjectsMap, GameObjectType, IAddExplosion } from 'Engines/GameEngin
 import * as THREE from 'three';
 import Particle from './Particle';
 import GameObject from './GameObject';
-import SceneObject, { PartialAnimationSpeeds } from './SceneObject';
+import SceneObject from './SceneObject';
 import Bullet from './Bullet';
 import { ColorRepresentation } from 'three';
 import ThreeHelper from 'Helpers/ThreeHelper';
 import Spaceship from './Spaceship';
 
 export default class Enemy extends GameObject {
-	acceleration = 0;
+	// ----------------- //
+	// Defaults: override these further down the inheritance chain
+	// ----------------- //
+
+	// Movement
 	speed = {
 		x: 0,
 		y: 0,
 		rotation: 0,
 	};
-	dragFactor: number;
-	maxAcceleration: number;
-	getGameObjectsToAdd: () => GameObjectsMap;
-	addExplosion: IAddExplosion;
-	targetAngle: number;
-	bulletFireOffset: number;
+	dragFactor = 0.97;
+	maxAcceleration = 0.001;
+	decelerateDistance = 2;
+	targetAngle: number = Math.random() * (Math.PI / 4) - Math.PI / 8;
+	rotationFactor = 0.1;
+
+	// Bullets
+	firesBullets = false;
+	bulletFireOffset: number = Math.floor(Math.random() * 60);
 	bulletFirePeriod?: number;
-	exhaustColour: ColorRepresentation;
-	exhaustParticlesPerSecond: number;
-	decelerateDistance: number;
-	hitboxRadius: number;
-	health: number;
 
-	constructor(options: {
-		mesh: THREE.Mesh;
-		hitboxRadius: number;
-		animationSpeeds?: PartialAnimationSpeeds;
-		startingPosition?: { x: number; y: number };
-		startingRotation?: number;
-		targetAngle?: number;
-		bulletFireOffset?: number;
-		bulletFirePeriod?: number;
-		maxAcceleration?: number;
-		dragFactor?: number;
-		decelerateDistance?: number;
-		exhaustColour?: ColorRepresentation;
-		exhaustParticlesPerSecond?: number;
-		health?: number;
-		getGameObjectsToAdd: () => GameObjectsMap;
-		addExplosion: IAddExplosion;
-	}) {
-		super(options.mesh);
+	// Exhaust
+	exhaustColour: ColorRepresentation = 0xf505ed;
+	exhaustParticlesPerSecond = 30;
 
-		this.targetAngle = options.targetAngle ?? Math.random() * (Math.PI / 4) - Math.PI / 8;
-		this.bulletFireOffset = options.bulletFireOffset ?? Math.floor(Math.random() * 60);
-		this.bulletFirePeriod = options.bulletFirePeriod;
-		this.exhaustColour = options.exhaustColour ?? 0xf505ed;
-		this.exhaustParticlesPerSecond = options.exhaustParticlesPerSecond ?? 30;
+	// Health
+	hitboxRadius = 1;
+	health = 1;
 
-		this.maxAcceleration = options.maxAcceleration ?? 0.001;
-		this.dragFactor = options.dragFactor ?? 0.97;
-		this.decelerateDistance = options.decelerateDistance ?? 2;
-
-		this.hitboxRadius = options.hitboxRadius;
-		this.health = options.health ?? 1;
-
-		this.getGameObjectsToAdd = options.getGameObjectsToAdd;
-		this.addExplosion = options.addExplosion;
+	constructor(mesh: THREE.Mesh) {
+		super(mesh);
 	}
 
+	// optionally implement this furhter down the inheritance chain
 	beforeAnimate = (frame: number) => {
-		// implement in extending classes
+		this.headTowardsSpaceship(frame);
 	};
 
 	headTowardsSpaceship = (frame: number) => {
@@ -78,7 +56,7 @@ export default class Enemy extends GameObject {
 				this._object3d.rotation.z,
 				ang + this.targetAngle,
 			);
-			this.speed.rotation = shortestAngleBetween / 10;
+			this.speed.rotation = shortestAngleBetween * this.rotationFactor;
 			// modify speed
 			this.speed.x += this.maxAcceleration * Math.cos(this._object3d.rotation.z - Math.PI);
 			this.speed.y += this.maxAcceleration * Math.sin(this._object3d.rotation.z - Math.PI);
@@ -219,5 +197,14 @@ export default class Enemy extends GameObject {
 			this.collision(spaceship);
 			spaceship.handleCollision();
 		}
+	};
+
+	// Must implement these methods further up the inheritance chain
+	getGameObjectsToAdd: () => GameObjectsMap = () => {
+		throw new Error('getGameObjectsToAdd not implemented');
+	};
+
+	addExplosion: IAddExplosion = () => {
+		throw new Error('addExplosion not implemented');
 	};
 }

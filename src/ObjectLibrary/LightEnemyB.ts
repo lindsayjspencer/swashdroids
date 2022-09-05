@@ -19,25 +19,35 @@ export default class LightEnemyA extends LightEnemy {
 		maxVisibleDistance: number,
 	) {
 		const calculatedSize = baseSize * size;
-		const startingPosition = options.startingPosition;
-		// create enemy shape
-		const geometry = new THREE.PlaneGeometry(calculatedSize, calculatedSize);
 
+		// create enemy mesh
+		const geometry = new THREE.PlaneGeometry(calculatedSize, calculatedSize);
 		const enemy = new THREE.Mesh(geometry, material);
 
-		enemy.position.x = startingPosition.x;
-		enemy.position.y = startingPosition.y;
+		// Position mesh
+		enemy.position.x = options.startingPosition.x;
+		enemy.position.y = options.startingPosition.y;
 
-		super({
-			mesh: enemy,
-			getGameObjectsToAdd: options.getGameObjectsToAdd,
-			hitboxRadius: calculatedSize * 0.8,
-			addExplosion: options.addExplosion,
-			firesBullets: true,
-		});
+		super(enemy);
 
+		// Make ThreeJS objects disposable
+		this._disposableGeometries.push(geometry);
+
+		// Setup internal functions that access the game engine
 		this.setMaxVisibleDistance(maxVisibleDistance);
+		this.getGameObjectsToAdd = options.getGameObjectsToAdd;
+		this.addExplosion = options.addExplosion;
 
+		// Health
 		this.health = 2;
+		this.hitboxRadius = calculatedSize * 0.8;
+
+		// Behaviour ------------------------------
+		// This enemy will try to head towards the spaceship, but the exact angle it travels at will be offset randomly by a maximum of 45 degrees.
+		// This causes it to spiral. Once it gets within the decelerateDistance of the spaceship, the target angle becomes 100% accurate and it
+		// will slow down to a stop and fire bullets periodically.
+		this.decelerateDistance = 2;
+		this.targetAngle = Math.random() * (Math.PI / 4) - Math.PI / 8;
+		this.firesBullets = true;
 	}
 }

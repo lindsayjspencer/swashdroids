@@ -19,28 +19,35 @@ export default class LightEnemyA extends LightEnemy {
 		maxVisibleDistance: number,
 	) {
 		const calculatedSize = baseSize * size;
-		const startingPosition = options.startingPosition;
-		// create enemy shape
-		const geometry = new THREE.PlaneGeometry(calculatedSize, calculatedSize);
 
+		// create enemy mesh
+		const geometry = new THREE.PlaneGeometry(calculatedSize, calculatedSize);
 		const enemy = new THREE.Mesh(geometry, material);
 
-		enemy.position.x = startingPosition.x;
-		enemy.position.y = startingPosition.y;
+		// Position mesh
+		enemy.position.x = options.startingPosition.x;
+		enemy.position.y = options.startingPosition.y;
 
-		super({
-			mesh: enemy,
-			getGameObjectsToAdd: options.getGameObjectsToAdd,
-			hitboxRadius: calculatedSize * 0.8,
-			addExplosion: options.addExplosion,
-			firesBullets: false,
-		});
+		super(enemy);
 
-		this.decelerateDistance = 0;
-		this.targetAngle = 0;
+		// Make ThreeJS objects disposable
+		this._disposableGeometries.push(geometry);
 
+		// Setup internal functions that access the game engine
 		this.setMaxVisibleDistance(maxVisibleDistance);
+		this.getGameObjectsToAdd = options.getGameObjectsToAdd;
+		this.addExplosion = options.addExplosion;
 
+		// Health
 		this.health = 1;
+		this.hitboxRadius = calculatedSize * 0.8;
+
+		// Behaviour ------------------------------
+		// This enemy will not fire bullets, instead it will try to run directly into the spaceship
+		this.decelerateDistance = 0;
+		this.dragFactor = 0.95;
+		this.rotationFactor = 0.15;
+		this.targetAngle = 0;
+		this.firesBullets = false;
 	}
 }

@@ -1,32 +1,17 @@
-import { GameObjectsMap, IAddExplosion } from 'Engines/GameEngine';
 import * as THREE from 'three';
 import Enemy from './Enemy';
 
 export default class LightEnemy extends Enemy {
-	constructor(options: {
-		mesh: THREE.Mesh;
-		getGameObjectsToAdd: () => GameObjectsMap;
-		addExplosion: IAddExplosion;
-		hitboxRadius: number;
-		firesBullets: boolean;
-	}) {
-		super({
-			mesh: options.mesh,
-			hitboxRadius: options.hitboxRadius,
-			getGameObjectsToAdd: options.getGameObjectsToAdd,
-			addExplosion: options.addExplosion,
-			targetAngle: Math.random() * (Math.PI / 2) - Math.PI / 4,
-			bulletFireOffset: Math.floor(Math.random() * 60),
-			bulletFirePeriod: options.firesBullets ? 60 : undefined,
-			exhaustColour: 0xf505ed,
-			exhaustParticlesPerSecond: 30,
-			maxAcceleration: 0.001,
-			dragFactor: 0.97,
-			decelerateDistance: 2,
-		});
-	}
+	constructor(mesh: THREE.Mesh) {
+		super(mesh);
 
-	beforeAnimate = (frame: number) => {
-		this.headTowardsSpaceship(frame);
-	};
+		this.targetAngle = Math.random() * (Math.PI / 2) - Math.PI / 4;
+		this.bulletFireOffset = Math.floor(Math.random() * 60);
+		this.bulletFirePeriod = 60;
+		this.exhaustColour = 0xf505ed;
+		this.exhaustParticlesPerSecond = 30;
+		this.maxAcceleration = 0.002;
+		this.dragFactor = 0.97;
+		this.decelerateDistance = 2;
+	}
 }
