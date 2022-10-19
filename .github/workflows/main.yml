@@ -41,5 +41,5 @@ jobs:
         script: |
           rm -rf /var/www/${{ env.FOLDER }}-ci
           mkdir /var/www/${{ env.FOLDER }}-ci
-          rsync -av /var/www/${{ env.FOLDER }}-ci-tmp/ /var/www/${{ env.FOLDER }}-ci
+          rsync -av /var/www/${{ env.FOLDER }}-ci-tmp/build/ /var/www/${{ env.FOLDER }}-ci
           rm -rf /var/www/${{ env.FOLDER }}-ci-tmp
