@@ -110,25 +110,13 @@ export default class ThreeEngine {
 	};
 
 	calculateAngleBetweenObjects = (object1: THREE.Object3D, object2: THREE.Object3D) => {
-		// const vector1 = new THREE.Vector3();
-		// object1.updateMatrixWorld();
-		// vector1.setFromMatrixPosition(object1.matrixWorld);
-		// const vector2 = new THREE.Vector3();
-		// object2.updateMatrixWorld();
-		// vector2.setFromMatrixPosition(object2.matrixWorld);
-		// return vector1.angleTo(vector2);
 		return Math.atan2(object1.position.y - object2.position.y, object1.position.x - object2.position.x);
 	};
 
 	calculateDistanceBetweenObjects = (object1: THREE.Object3D, object2: THREE.Object3D) => {
-		const vector1 = new THREE.Vector3();
-		object1.updateMatrixWorld();
-		vector1.setFromMatrixPosition(object1.matrixWorld);
-		const vector2 = new THREE.Vector3();
-		object2.updateMatrixWorld();
-		vector2.setFromMatrixPosition(object2.matrixWorld);
-		const distance = vector1.distanceTo(vector2);
-		return distance;
+		return Math.sqrt(
+			Math.pow(object1.position.x - object2.position.x, 2) + Math.pow(object1.position.y - object2.position.y, 2),
+		);
 	};
 
 	visibleHeightAtZDepth = (depth: number, camera: THREE.PerspectiveCamera) => {
