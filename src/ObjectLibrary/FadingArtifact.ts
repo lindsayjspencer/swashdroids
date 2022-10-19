@@ -11,6 +11,7 @@ export default class FadingArtifact extends SceneObject {
 		this.lifetime = lifetime || Math.random() * 2 + 1;
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	fade = (frame: number) => {
 		for (const fadableMaterial of this.fadableMaterials) {
 			fadableMaterial.opacity = Math.max(0, fadableMaterial.opacity - 0.01 / this.lifetime);

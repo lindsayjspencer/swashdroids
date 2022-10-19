@@ -33,6 +33,7 @@ export default class Bullet extends GameObject {
 		});
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	beforeAnimate = (frame: number) => {
 		const distanceToSpacehip = this.getDistanceToSpaceship();
 		const maxVisibleDistance = this.getMaxVisibleDistance();

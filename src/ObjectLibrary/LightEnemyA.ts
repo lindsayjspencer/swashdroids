@@ -1,14 +1,7 @@
 import ExplosionEngine from 'Engines/ExplosionEngine';
 import objectMeshCreator from 'Helpers/ObjectMeshCreator';
 import { GameObjectsMap } from 'Managers/SceneManager';
-import * as THREE from 'three';
 import LightEnemy from './LightEnemy';
-
-const baseSize = 0.3;
-
-const material = new THREE.MeshLambertMaterial({
-	color: 0x858383,
-});
 
 export default class LightEnemyA extends LightEnemy {
 	constructor(options: {
@@ -18,8 +11,6 @@ export default class LightEnemyA extends LightEnemy {
 		size?: number;
 		maxVisibleDistance: number;
 	}) {
-		const calculatedSize = baseSize * (options.size ?? 1);
-
 		// // create enemy mesh
 		// const geometry = new THREE.PlaneGeometry(calculatedSize, calculatedSize);
 		// const enemy = new THREE.Mesh(geometry, material);

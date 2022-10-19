@@ -108,6 +108,7 @@ export default class Asteroid extends GameObject {
 		this.explosionEngine = options.explosionEngine;
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	beforeAnimate = (frame: number) => {
 		const distanceToSpaceship = this.getDistanceToSpaceship();
 		const maxVisibleDistance = this.getMaxVisibleDistance();
